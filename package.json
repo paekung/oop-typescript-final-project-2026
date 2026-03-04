@@ -7,17 +7,27 @@
   "license": "MIT",
   "contributors": [
     {
-      "fullname": "John Doe",
-      "username": "username1",
-      "studentId": "12345678"
+      "fullname": "สรวิศ วงค์ทิม",
+      "username": "bsrxwt",
+      "studentId": "68011120"
+    },
+    {
+      "fullname": "ศุภกิตติ์ ตันตวาที",
+      "username": "paekung",
+      "studentId": "68011088"
+    },
+    {
+      "fullname": "สหภูมิ รัตนาวิวัฒน์พงศ์",
+      "username": "Meseal",
+      "studentId": "68011128"
     }
   ],
   "project": {
     "model": {
-      "id": null,
-      "name": null
+      "id": 6,
+      "name": "Appointment Booking System"
     },
-    "sumStudentId": null
+    "sumStudentId": 204033336
   },
   "scripts": {
     "build": "nest build",
