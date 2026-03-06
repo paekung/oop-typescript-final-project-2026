@@ -14,7 +14,7 @@ export class ServiceController {
   @Get()
   @ApiOperation({ summary: 'Get all services' })
   @ApiResponse({ status: 200, description: 'Return all services' })
-  async findAll(): Promise<CustomApiResponse<any>> {
+  async findAll(): Promise<CustomApiResponse<ServiceEntity[]>> {
     const data = await this.serviceService.findAll();
     return { success: true, message: 'Services retrieved successfully', data };
   }
@@ -24,7 +24,7 @@ export class ServiceController {
   @ApiParam({ name: 'id', type: 'string' })
   @ApiResponse({ status: 200, description: 'Return a service' })
   @ApiResponse({ status: 404, description: 'Service not found' })
-  async findById(@Param('id') id: string): Promise<CustomApiResponse<any>> {
+  async findById(@Param('id') id: string): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.findById(id);
     return { success: true, message: 'Service retrieved successfully', data };
   }
