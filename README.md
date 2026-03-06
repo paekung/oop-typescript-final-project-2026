@@ -122,6 +122,51 @@ http://localhost:3000
 
 ---
 
+## 🔌 API Summary
+
+API หลักของระบบแบ่งออกเป็น 2 resource คือ `services` และ `appointments`
+
+### Service Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/services` | ดึงรายการบริการทั้งหมด |
+| GET | `/services/:id` | ดึงข้อมูลบริการตาม ID |
+| POST | `/services` | สร้างบริการใหม่ |
+| PUT | `/services/:id` | อัปเดตข้อมูลบริการทั้งหมด |
+| PATCH | `/services/:id` | อัปเดตข้อมูลบริการบางส่วน |
+| DELETE | `/services/:id` | ลบบริการ |
+| GET | `/services/:id/available-slots?date=YYYY-MM-DD` | ดึงช่วงเวลาว่างของบริการในวันที่กำหนด |
+
+### Appointment Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/appointments` | ดึงรายการนัดหมายทั้งหมด |
+| GET | `/appointments/:id` | ดึงข้อมูลนัดหมายตาม ID |
+| POST | `/appointments` | สร้างการจองนัดหมายใหม่ |
+| PUT | `/appointments/:id` | อัปเดตข้อมูลนัดหมายทั้งหมด |
+| PATCH | `/appointments/:id` | อัปเดตข้อมูลนัดหมายบางส่วน |
+| DELETE | `/appointments/:id` | ลบนัดหมาย |
+| PATCH | `/appointments/:id/cancel` | ยกเลิกนัดหมายพร้อมเหตุผล |
+| PATCH | `/appointments/:id/confirm` | ยืนยันนัดหมาย |
+
+### Standard Response Format
+
+ทุก endpoint จะตอบกลับในรูปแบบ `ApiResponse<T>` เพื่อให้ success และ error responses มีโครงสร้างเดียวกัน
+
+```typescript
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T | null;
+}
+```
+
+Swagger UI จะพร้อมใช้งานที่ `/api` เมื่อรันแอปสำเร็จ
+
+---
+
 ## 🧩 Model Sets
 
 แต่ละกลุ่มต้องเลือก **Model Set 1 ชุด** จาก 10 ชุดที่มีให้
