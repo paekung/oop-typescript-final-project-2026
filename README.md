@@ -1,26 +1,30 @@
-# NestJS Backend API — Project Template
+# Appointment Booking System API
 
 ## 📌 Project Overview
 
-โปรเจคนี้เป็น **Template สำหรับ Class Project** ในรายวิชาการพัฒนา Backend ด้วย NestJS Framework
+โปรเจคนี้เป็น **NestJS Backend REST API** สำหรับระบบจองบริการและนัดหมาย
 
-**Repository:** [https://github.com/42bangkok-classroom/oop-typescript-final-project-2026](https://github.com/42bangkok-classroom/oop-typescript-final-project-2026)
+ระบบรองรับการจัดการข้อมูลหลัก 2 ส่วน:
 
-วัตถุประสงค์ของโปรเจคนี้คือให้นักศึกษาฝึก:
+* **Service** — ข้อมูลบริการ เช่น ชื่อบริการ หมวดหมู่ ราคา ระยะเวลา และเวลาที่เปิดให้จอง
+* **Appointment** — ข้อมูลการนัดหมายของลูกค้า เช่น วันที่ เวลา สถานะการจอง และหมายเหตุ
 
-* การออกแบบและพัฒนา REST API ตามมาตรฐาน
-* การใช้ TypeScript อย่างปลอดภัย (Type-safe)
-* การจัดการ Validation และ Error Handling
-* การจัดทำเอกสารระบบ (Documentation)
+โปรเจคนี้ถูกพัฒนาตามโจทย์ Model Set 6 ของรายวิชา OOP TypeScript Final Project โดยเน้น:
+
+* การออกแบบ REST API ด้วย NestJS
+* การใช้ TypeScript แบบ strict และ type-safe
+* การจัดการ validation, exception handling และ Swagger documentation
+* การออกแบบ business logic สำหรับการจองเวลาและตรวจสอบเงื่อนไขของระบบ
 
 ---
 
 ## 👥 Team Structure
 
-* ทำงานเป็นกลุ่ม กลุ่มละ **3–4 คน**
-* ระยะเวลาการพัฒนา **ประมาณ 2 สัปดาห์**
-* สมาชิกทุกคนต้องมี commit ใน repository
-* รายชื่อสมาชิกต้องถูกระบุไว้ใน `package.json` (key `contributors`)
+ทีมพัฒนา:
+
+* สรวิศ วงค์ทิม — `bsrxwt`
+* ศุภกิตติ์ ตันตวาที — `paekung`
+* สหภูมิ รัตนาวิวัฒน์พงศ์ — `Meseal`
 
 ---
 
@@ -39,37 +43,42 @@
 
 ```text
 .
-├── src/
-│   ├── main.ts
-│   ├── app.module.ts
-│   │
-│   ├── modules/
-│   │   └── example/
-│   │       └── dto/
-│   │
-│   └── common/
-│       ├── interfaces/
-│       └── utils/
-│
-├── docs/
-│   ├── api-specification.md
-│   ├── data-model.md
-│   └── uml-diagram.png
 ├── subjects/
-│   ├── requirement.md
-│   ├── submission.md
 │   ├── evaluation.md
-│   └── models.md
-│
+│   ├── models.md
+│   ├── requirement.md
+│   └── submission.md
+├── src/
+│   ├── app.module.ts
+│   ├── controllers/
+│   │   └── service.controller.ts
+│   ├── dto/
+│   │   └── service/
+│   ├── entities/
+│   │   └── service.entity.ts
+│   ├── enums/
+│   │   ├── day-of-week.enum.ts
+│   │   └── service-category.enum.ts
+│   ├── filters/
+│   │   └── http-exception.filter.ts
+│   ├── interfaces/
+│   │   └── api-response.interface.ts
+│   ├── services/
+│   │   └── service.service.ts
+│   └── main.ts
+├── test/
+│   ├── app.e2e-spec.ts
+│   └── jest-e2e.json
+├── nest-cli.json
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
 > 📌 หมายเหตุ: 
-> * โครงสร้างอาจมีการปรับเพิ่มเติมได้ตามความเหมาะสม แต่ต้องยังคงความเป็นระเบียบและอ่านง่าย
-> * **แนะนำให้แยก module ตาม models** (เช่น `modules/users/`, `modules/products/`) เพื่อให้โค้ดเป็นระบบและดูแลรักษาง่าย
-> * แต่ละ module ควรมี controller, service, และ dto ของตัวเอง
+* ในสถานะปัจจุบัน ฝั่ง `Service` ถูกสร้างแล้ว และฝั่ง `Appointment` จะถูกเพิ่มเข้ามาในโครงสร้างเดียวกัน
+* โฟลเดอร์ `filters/` และ `interfaces/` ใช้สำหรับ shared infrastructure ของทั้งระบบ
+* เอกสารเชิงลึกเพิ่มเติมจะถูกจัดเก็บในโฟลเดอร์ `docs/`
 
 ---
 
@@ -77,23 +86,84 @@
 
 ### 1. Install Dependencies
 
+โปรเจคนี้ใช้ NestJS, TypeORM, SQLite, class-validator และ Swagger
+
 ```bash
 npm install
 ```
 
 ### 2. Run Development Server
 
+เมื่อรันครั้งแรก ระบบจะสร้างไฟล์ `database.sqlite` อัตโนมัติจากการตั้งค่า TypeORM
+
 ```bash
 npm run start:dev
 ```
 
-### 3. API Documentation (Swagger)
+### 3. Build for Production
+
+```bash
+npm run build
+```
+
+### 4. API Documentation (Swagger)
 
 เมื่อรันโปรเจคแล้ว สามารถเข้าดู Swagger ได้ที่:
 
 ```text
 http://localhost:3000/api
 ```
+
+### 5. Default Application URL
+
+```text
+http://localhost:3000
+```
+
+---
+
+## 🔌 API Summary
+
+API หลักของระบบแบ่งออกเป็น 2 resource คือ `services` และ `appointments`
+
+### Service Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/services` | ดึงรายการบริการทั้งหมด |
+| GET | `/services/:id` | ดึงข้อมูลบริการตาม ID |
+| POST | `/services` | สร้างบริการใหม่ |
+| PUT | `/services/:id` | อัปเดตข้อมูลบริการทั้งหมด |
+| PATCH | `/services/:id` | อัปเดตข้อมูลบริการบางส่วน |
+| DELETE | `/services/:id` | ลบบริการ |
+| GET | `/services/:id/available-slots?date=YYYY-MM-DD` | ดึงช่วงเวลาว่างของบริการในวันที่กำหนด |
+
+### Appointment Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/appointments` | ดึงรายการนัดหมายทั้งหมด |
+| GET | `/appointments/:id` | ดึงข้อมูลนัดหมายตาม ID |
+| POST | `/appointments` | สร้างการจองนัดหมายใหม่ |
+| PUT | `/appointments/:id` | อัปเดตข้อมูลนัดหมายทั้งหมด |
+| PATCH | `/appointments/:id` | อัปเดตข้อมูลนัดหมายบางส่วน |
+| DELETE | `/appointments/:id` | ลบนัดหมาย |
+| PATCH | `/appointments/:id/cancel` | ยกเลิกนัดหมายพร้อมเหตุผล |
+| PATCH | `/appointments/:id/confirm` | ยืนยันนัดหมาย |
+
+### Standard Response Format
+
+ทุก endpoint จะตอบกลับในรูปแบบ `ApiResponse<T>` เพื่อให้ success และ error responses มีโครงสร้างเดียวกัน
+
+```typescript
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T | null;
+}
+```
+
+Swagger UI จะพร้อมใช้งานที่ `/api` เมื่อรันแอปสำเร็จ
 
 ---
 
