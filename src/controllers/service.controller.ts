@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query,HttpCode,HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { ServiceService } from '../services/service.service';
 import { CreateServiceDto } from '../dto/service/create-service.dto';
 import { UpdateServiceDto } from '../dto/service/update-service.dto';
 import { PatchServiceDto } from '../dto/service/patch-service.dto';
 import { ApiResponse as CustomApiResponse } from '../interfaces/api-response.interface';
-
+import { ServiceEntity } from '../entities/service.entity';
 @ApiTags('services')
 @Controller('services')
 export class ServiceController {
@@ -14,7 +14,7 @@ export class ServiceController {
   @Get()
   @ApiOperation({ summary: 'Get all services' })
   @ApiResponse({ status: 200, description: 'Return all services' })
-  async findAll(): Promise<CustomApiResponse<any>> {
+  async findAll(): Promise<CustomApiResponse<ServiceEntity[]>> {
     const data = await this.serviceService.findAll();
     return { success: true, message: 'Services retrieved successfully', data };
   }
@@ -24,17 +24,18 @@ export class ServiceController {
   @ApiParam({ name: 'id', type: 'string' })
   @ApiResponse({ status: 200, description: 'Return a service' })
   @ApiResponse({ status: 404, description: 'Service not found' })
-  async findById(@Param('id') id: string): Promise<CustomApiResponse<any>> {
+  async findById(@Param('id') id: string): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.findById(id);
     return { success: true, message: 'Service retrieved successfully', data };
   }
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new service' })
   @ApiBody({ type: CreateServiceDto })
   @ApiResponse({ status: 201, description: 'Service created successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  async create(@Body() dto: CreateServiceDto): Promise<CustomApiResponse<any>> {
+  async create(@Body() dto: CreateServiceDto): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.create(dto);
     return { success: true, message: 'Service created successfully', data };
   }
@@ -45,7 +46,10 @@ export class ServiceController {
   @ApiBody({ type: UpdateServiceDto })
   @ApiResponse({ status: 200, description: 'Service updated successfully' })
   @ApiResponse({ status: 404, description: 'Service not found' })
-  async update(@Param('id') id: string, @Body() dto: UpdateServiceDto): Promise<CustomApiResponse<any>> {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateServiceDto,
+  ): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.update(id, dto);
     return { success: true, message: 'Service updated successfully', data };
   }
@@ -56,7 +60,10 @@ export class ServiceController {
   @ApiBody({ type: PatchServiceDto })
   @ApiResponse({ status: 200, description: 'Service patched successfully' })
   @ApiResponse({ status: 404, description: 'Service not found' })
-  async patch(@Param('id') id: string, @Body() dto: PatchServiceDto): Promise<CustomApiResponse<any>> {
+  async patch(
+    @Param('id') id: string,
+    @Body() dto: PatchServiceDto,
+  ): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.patch(id, dto);
     return { success: true, message: 'Service patched successfully', data };
   }
