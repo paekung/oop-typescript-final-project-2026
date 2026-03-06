@@ -30,11 +30,12 @@ export class ServiceController {
   }
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new service' })
   @ApiBody({ type: CreateServiceDto })
   @ApiResponse({ status: 201, description: 'Service created successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  async create(@Body() dto: CreateServiceDto): Promise<CustomApiResponse<any>> {
+  async create(@Body() dto: CreateServiceDto): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.create(dto);
     return { success: true, message: 'Service created successfully', data };
   }
