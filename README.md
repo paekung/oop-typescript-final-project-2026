@@ -43,37 +43,42 @@
 
 ```text
 .
-├── src/
-│   ├── main.ts
-│   ├── app.module.ts
-│   │
-│   ├── modules/
-│   │   └── example/
-│   │       └── dto/
-│   │
-│   └── common/
-│       ├── interfaces/
-│       └── utils/
-│
-├── docs/
-│   ├── api-specification.md
-│   ├── data-model.md
-│   └── uml-diagram.png
 ├── subjects/
-│   ├── requirement.md
-│   ├── submission.md
 │   ├── evaluation.md
-│   └── models.md
-│
+│   ├── models.md
+│   ├── requirement.md
+│   └── submission.md
+├── src/
+│   ├── app.module.ts
+│   ├── controllers/
+│   │   └── service.controller.ts
+│   ├── dto/
+│   │   └── service/
+│   ├── entities/
+│   │   └── service.entity.ts
+│   ├── enums/
+│   │   ├── day-of-week.enum.ts
+│   │   └── service-category.enum.ts
+│   ├── filters/
+│   │   └── http-exception.filter.ts
+│   ├── interfaces/
+│   │   └── api-response.interface.ts
+│   ├── services/
+│   │   └── service.service.ts
+│   └── main.ts
+├── test/
+│   ├── app.e2e-spec.ts
+│   └── jest-e2e.json
+├── nest-cli.json
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
 > 📌 หมายเหตุ: 
-> * โครงสร้างอาจมีการปรับเพิ่มเติมได้ตามความเหมาะสม แต่ต้องยังคงความเป็นระเบียบและอ่านง่าย
-> * **แนะนำให้แยก module ตาม models** (เช่น `modules/users/`, `modules/products/`) เพื่อให้โค้ดเป็นระบบและดูแลรักษาง่าย
-> * แต่ละ module ควรมี controller, service, และ dto ของตัวเอง
+* ในสถานะปัจจุบัน ฝั่ง `Service` ถูกสร้างแล้ว และฝั่ง `Appointment` จะถูกเพิ่มเข้ามาในโครงสร้างเดียวกัน
+* โฟลเดอร์ `filters/` และ `interfaces/` ใช้สำหรับ shared infrastructure ของทั้งระบบ
+* เอกสารเชิงลึกเพิ่มเติมจะถูกจัดเก็บในโฟลเดอร์ `docs/`
 
 ---
 
