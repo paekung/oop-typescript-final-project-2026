@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { ServiceCategory } from '../enums/service-category.enum';
 import { DayOfWeek } from '../enums/day-of-week.enum';
 // Temporarily commenting out AppointmentEntity import until the file is created
-// import { AppointmentEntity } from './appointment.entity';
+import { AppointmentEntity } from './appointment.entity';
 
 @Entity('services')
 export class ServiceEntity {
@@ -52,6 +52,6 @@ export class ServiceEntity {
   updatedAt!: Date;
 
   // Temporarily commenting out appointments relation until AppointmentEntity is available
-  // @OneToMany(() => AppointmentEntity, (appointment) => appointment.service)
-  // appointments!: AppointmentEntity[];
+  @OneToMany(() => AppointmentEntity, (appointment) => appointment.service)
+  appointments!: AppointmentEntity[];
 }
