@@ -17,7 +17,7 @@ import { AppointmentService } from './services/appointment.service';
     }),
     TypeOrmModule.forFeature([ServiceEntity, AppointmentEntity]),
   ],
-  controllers: [],
+  controllers: [ServiceController, AppointmentController],
   providers: [],
 })
 export class AppModule {}
