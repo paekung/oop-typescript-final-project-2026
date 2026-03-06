@@ -1,26 +1,30 @@
-# NestJS Backend API — Project Template
+# Appointment Booking System API
 
 ## 📌 Project Overview
 
-โปรเจคนี้เป็น **Template สำหรับ Class Project** ในรายวิชาการพัฒนา Backend ด้วย NestJS Framework
+โปรเจคนี้เป็น **NestJS Backend REST API** สำหรับระบบจองบริการและนัดหมาย
 
-**Repository:** [https://github.com/42bangkok-classroom/oop-typescript-final-project-2026](https://github.com/42bangkok-classroom/oop-typescript-final-project-2026)
+ระบบรองรับการจัดการข้อมูลหลัก 2 ส่วน:
 
-วัตถุประสงค์ของโปรเจคนี้คือให้นักศึกษาฝึก:
+* **Service** — ข้อมูลบริการ เช่น ชื่อบริการ หมวดหมู่ ราคา ระยะเวลา และเวลาที่เปิดให้จอง
+* **Appointment** — ข้อมูลการนัดหมายของลูกค้า เช่น วันที่ เวลา สถานะการจอง และหมายเหตุ
 
-* การออกแบบและพัฒนา REST API ตามมาตรฐาน
-* การใช้ TypeScript อย่างปลอดภัย (Type-safe)
-* การจัดการ Validation และ Error Handling
-* การจัดทำเอกสารระบบ (Documentation)
+โปรเจคนี้ถูกพัฒนาตามโจทย์ Model Set 6 ของรายวิชา OOP TypeScript Final Project โดยเน้น:
+
+* การออกแบบ REST API ด้วย NestJS
+* การใช้ TypeScript แบบ strict และ type-safe
+* การจัดการ validation, exception handling และ Swagger documentation
+* การออกแบบ business logic สำหรับการจองเวลาและตรวจสอบเงื่อนไขของระบบ
 
 ---
 
 ## 👥 Team Structure
 
-* ทำงานเป็นกลุ่ม กลุ่มละ **3–4 คน**
-* ระยะเวลาการพัฒนา **ประมาณ 2 สัปดาห์**
-* สมาชิกทุกคนต้องมี commit ใน repository
-* รายชื่อสมาชิกต้องถูกระบุไว้ใน `package.json` (key `contributors`)
+ทีมพัฒนา:
+
+* สรวิศ วงค์ทิม — `bsrxwt`
+* ศุภกิตติ์ ตันตวาที — `paekung`
+* สหภูมิ รัตนาวิวัฒน์พงศ์ — `Meseal`
 
 ---
 
