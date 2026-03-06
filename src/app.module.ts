@@ -12,6 +12,7 @@ import { AppointmentService } from './services/appointment.service';
     TypeOrmModule.forRoot({
       type: 'better-sqlite3',
       database: 'database.sqlite',
+      entities: [ServiceEntity, AppointmentEntity],
     }),
   ],
   controllers: [],
