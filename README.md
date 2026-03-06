@@ -81,22 +81,38 @@
 
 ### 1. Install Dependencies
 
+โปรเจคนี้ใช้ NestJS, TypeORM, SQLite, class-validator และ Swagger
+
 ```bash
 npm install
 ```
 
 ### 2. Run Development Server
 
+เมื่อรันครั้งแรก ระบบจะสร้างไฟล์ `database.sqlite` อัตโนมัติจากการตั้งค่า TypeORM
+
 ```bash
 npm run start:dev
 ```
 
-### 3. API Documentation (Swagger)
+### 3. Build for Production
+
+```bash
+npm run build
+```
+
+### 4. API Documentation (Swagger)
 
 เมื่อรันโปรเจคแล้ว สามารถเข้าดู Swagger ได้ที่:
 
 ```text
 http://localhost:3000/api
+```
+
+### 5. Default Application URL
+
+```text
+http://localhost:3000
 ```
 
 ---
