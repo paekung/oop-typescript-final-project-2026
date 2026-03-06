@@ -8,7 +8,12 @@ import { ServiceService } from './services/service.service';
 import { AppointmentService } from './services/appointment.service';
 
 @Module({
-  imports: [],
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'better-sqlite3',
+      database: 'database.sqlite',
+    }),
+  ],
   controllers: [],
   providers: [],
 })
