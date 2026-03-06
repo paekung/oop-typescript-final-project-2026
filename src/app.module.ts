@@ -13,6 +13,7 @@ import { AppointmentService } from './services/appointment.service';
       type: 'better-sqlite3',
       database: 'database.sqlite',
       entities: [ServiceEntity, AppointmentEntity],
+      synchronize: true,
     }),
   ],
   controllers: [],
