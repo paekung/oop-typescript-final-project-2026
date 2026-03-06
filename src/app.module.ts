@@ -15,6 +15,7 @@ import { AppointmentService } from './services/appointment.service';
       entities: [ServiceEntity, AppointmentEntity],
       synchronize: true,
     }),
+    TypeOrmModule.forFeature([ServiceEntity, AppointmentEntity]),
   ],
   controllers: [],
   providers: [],
