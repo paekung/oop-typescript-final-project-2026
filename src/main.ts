@@ -23,10 +23,13 @@ async function bootstrap(): Promise<void> {
 
   // Swagger/OpenAPI documentation
   const config = new DocumentBuilder()
-    .setTitle('NestJS Backend API')
-    .setDescription('API Documentation for NestJS Backend Project')
+    .setTitle('Appointment Booking System API')
+    .setDescription(
+      'REST API for managing services and appointment bookings',
+    )
     .setVersion('1.0')
-    .addTag('api')
+    .addTag('services', 'Service management endpoints')
+    .addTag('appointments', 'Appointment booking endpoints')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
