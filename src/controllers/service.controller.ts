@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query,HttpCode,HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { ServiceService } from '../services/service.service';
 import { CreateServiceDto } from '../dto/service/create-service.dto';
 import { UpdateServiceDto } from '../dto/service/update-service.dto';
 import { PatchServiceDto } from '../dto/service/patch-service.dto';
 import { ApiResponse as CustomApiResponse } from '../interfaces/api-response.interface';
-
+import { ServiceEntity } from '../entities/service.entity';
 @ApiTags('services')
 @Controller('services')
 export class ServiceController {
