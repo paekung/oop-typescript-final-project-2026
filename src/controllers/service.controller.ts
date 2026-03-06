@@ -46,7 +46,10 @@ export class ServiceController {
   @ApiBody({ type: UpdateServiceDto })
   @ApiResponse({ status: 200, description: 'Service updated successfully' })
   @ApiResponse({ status: 404, description: 'Service not found' })
-  async update(@Param('id') id: string, @Body() dto: UpdateServiceDto): Promise<CustomApiResponse<any>> {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateServiceDto,
+  ): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.update(id, dto);
     return { success: true, message: 'Service updated successfully', data };
   }
@@ -57,7 +60,10 @@ export class ServiceController {
   @ApiBody({ type: PatchServiceDto })
   @ApiResponse({ status: 200, description: 'Service patched successfully' })
   @ApiResponse({ status: 404, description: 'Service not found' })
-  async patch(@Param('id') id: string, @Body() dto: PatchServiceDto): Promise<CustomApiResponse<any>> {
+  async patch(
+    @Param('id') id: string,
+    @Body() dto: PatchServiceDto,
+  ): Promise<CustomApiResponse<ServiceEntity>> {
     const data = await this.serviceService.patch(id, dto);
     return { success: true, message: 'Service patched successfully', data };
   }
