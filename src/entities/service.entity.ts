@@ -1,55 +1,57 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { ServiceCategory } from '../enums/service-category.enum';
 import { DayOfWeek } from '../enums/day-of-week.enum';
-import { AppointmentEntity } from './appointment.entity';
+// Temporarily commenting out AppointmentEntity import until the file is created
+// import { AppointmentEntity } from './appointment.entity';
 
 @Entity('services')
 export class ServiceEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ length: 200 })
-  name: string;
+  name!: string;
 
   @Column({ type: 'text' })
-  description: string;
+  description!: string;
 
   @Column({ type: 'varchar', length: 50 })
-  category: ServiceCategory;
+  category!: ServiceCategory;
 
   @Column({ type: 'int' })
-  durationMinutes: number;
+  durationMinutes!: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  price: number;
+  price!: number;
 
   @Column({ length: 200 })
-  providerName: string;
+  providerName!: string;
 
   @Column({ type: 'simple-json' })
-  availableDays: DayOfWeek[];
+  availableDays!: DayOfWeek[];
 
   @Column({ length: 5 })
-  startTime: string;
+  startTime!: string;
 
   @Column({ length: 5 })
-  endTime: string;
+  endTime!: string;
 
   @Column({ type: 'int', default: 1 })
-  maxConcurrentBookings: number;
+  maxConcurrentBookings!: number;
 
   @Column({ type: 'int', default: 0 })
-  bufferMinutes: number;
+  bufferMinutes!: number;
 
   @Column({ type: 'boolean', default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 
-  @OneToMany(() => AppointmentEntity, (appointment) => appointment.service)
-  appointments: AppointmentEntity[];
+  // Temporarily commenting out appointments relation until AppointmentEntity is available
+  // @OneToMany(() => AppointmentEntity, (appointment) => appointment.service)
+  // appointments!: AppointmentEntity[];
 }
