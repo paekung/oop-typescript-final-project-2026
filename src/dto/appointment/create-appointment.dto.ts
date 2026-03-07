@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsEmail, IsUUID, Matches, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsEmail, IsUUID, Matches, IsOptional, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateAppointmentDto {
@@ -10,16 +10,20 @@ export class CreateAppointmentDto {
   @ApiProperty({ example: 'Somchai Jaidee', description: 'Customer full name' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   customerName!: string;
 
   @ApiProperty({ example: 'somchai@email.com', description: 'Customer email address' })
   @IsEmail()
   @IsNotEmpty()
+  @MaxLength(200)
   customerEmail!: string;
 
   @ApiProperty({ example: '0812345678', description: 'Customer phone number' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(20)
+  @Matches(/^0\d{8,9}$/, { message: 'customerPhone must be a valid Thai phone number (e.g., 0812345678)' })
   customerPhone!: string;
 
   @ApiProperty({ example: '2026-03-10', description: 'Date of appointment(YYYY-MM-DD)' })
