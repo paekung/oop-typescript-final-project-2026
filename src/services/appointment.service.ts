@@ -18,8 +18,6 @@ export class AppointmentService {
     private readonly serviceRepo: Repository<ServiceEntity>,
   ) {}
 
-  // --- Helper Methods ---
-
   private addMinutes(time: string, mins: number): string {
     const [h, m] = time.split(':').map(Number);
     const totalMins = h * 60 + m + mins;
@@ -43,16 +41,10 @@ export class AppointmentService {
     return validTransitions[currentStatus].includes(newStatus) ?? false;
   }
 
-  // 🌟 แก้ไขจากเดิม: สร้าง Helper ฟังก์ชันรวม Logic การตรวจสอบกฎธุรกิจทั้งหมด
-  // ทำให้เช็ค Conflict ได้แม่นยำ ทั้งตอน Create และ Update (ลดโค้ดซ้ำซ้อน)
-  private async validateAndCalculateBooking(
-    serviceId: string,
-    appointmentDateStr: string,
-    startTime: string,
-    excludeAppointmentId?: string,
-  ): Promise<{ serviceName: string; endTime: string }> {
+  private async validateAndCalculateBooking(serviceId: string,appointmentDateStr: string,startTime: string,excludeAppointmentId?: string,):Promise<
+  { serviceName: string; endTime: string }> {
     const service = await this.serviceRepo.findOneBy({ id: serviceId });
-    if (!service) throw new NotFoundException('Service not found'); // ป้องกัน Error 500 FK Failed
+    if (!service) throw new NotFoundException('Service not found');
     if (!service.isActive) throw new BadRequestException('Service is currently inactive');
 
     const appointmentDate = new Date(appointmentDateStr);
@@ -73,14 +65,12 @@ export class AppointmentService {
     const endTime = this.addMinutes(startTime, service.durationMinutes);
     if (endTime > service.endTime) throw new BadRequestException(`Service ends at ${service.endTime}`);
 
-    // ตรวจสอบ Time Slot Conflict
     const whereClause: FindOptionsWhere<AppointmentEntity> = { 
       serviceId: serviceId, 
       appointmentDate: appointmentDateStr,
       status: Not(AppointmentStatus.CANCELLED) 
     };
     
-    // 🌟 แก้ไขจากเดิม: ถ้าระบุ excludeAppointmentId (ตอนทำ Update) จะไม่เอาตัวเองมาคิดเป็นคิวชน
     if (excludeAppointmentId) {
       whereClause.id = Not(excludeAppointmentId);
     }
@@ -102,10 +92,7 @@ export class AppointmentService {
     return { serviceName: service.name, endTime };
   }
 
-  // --- Main Service Methods ---
-
   async createAppointment(dto: CreateAppointmentDto): Promise<AppointmentEntity> {
-    // 🌟 แก้ไขจากเดิม: เรียกใช้ Validate Helper ทีเดียวจบ โค้ดสั้นลงมาก
     const { serviceName, endTime } = await this.validateAndCalculateBooking(
       dto.serviceId,
       dto.appointmentDate,
@@ -139,16 +126,13 @@ export class AppointmentService {
 
   async update(id: string, dto: UpdateAppointmentDto): Promise<AppointmentEntity> {
     const existing = await this.findById(id);
-    
-    // 🌟 แก้ไขจากเดิม: ห้ามแก้ข้อมูลหากนัดหมายจบสิ้นไปแล้ว
+
     if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(existing.status)) {
       throw new BadRequestException('Cannot modify a finalized appointment');
     }
 
-    // 🌟 แก้ไขจากเดิม: จดจำสถานะเดิมไว้ เพื่อป้องกันการแอบเปลี่ยน Status ผ่าน Body โดยไม่ต้องพึ่ง type 'any'
     const originalStatus = existing.status;
 
-    // เช็คข้อมูลใหม่ (ถ้ามี) หรือใช้ของเดิม เพื่อเอาไปคำนวณวัน/เวลา/Service ใหม่
     const targetServiceId = dto.serviceId ?? existing.serviceId;
     const targetDate = dto.appointmentDate ?? existing.appointmentDate;
     const targetStartTime = dto.startTime ?? existing.startTime;
@@ -157,13 +141,10 @@ export class AppointmentService {
       targetServiceId,
       targetDate,
       targetStartTime,
-      id // ส่ง ID ตัวเองไปยกเว้นการตรวจสอบคิวชน
+      id
     );
 
-    // รวมข้อมูลใหม่เข้ากับของเดิม
     Object.assign(existing, dto);
-    
-    // 🌟 แก้ไขจากเดิม: ทับค่า Status เดิมกลับไป (ล้างสิ่งที่อาจแฝงมา) พร้อมอัปเดต Service/เวลา ใหม่
     existing.status = originalStatus;
     existing.serviceName = serviceName; 
     existing.endTime = endTime;         
@@ -174,7 +155,6 @@ export class AppointmentService {
   async patch(id: string, dto: PatchAppointmentDto): Promise<AppointmentEntity> {
     const existing = await this.findById(id);
     
-    // 🌟 แก้ไขจากเดิม: ดักไม่ให้ PATCH แก้ไขสถานะได้ ถ้านัดหมายมันจบสิ้นไปแล้ว
     if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(existing.status)) {
       throw new BadRequestException('Cannot modify a finalized appointment');
     }
