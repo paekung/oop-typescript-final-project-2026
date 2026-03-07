@@ -1,13 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsNumber, Matches, IsArray, ArrayMinSize, IsBoolean, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ServiceCategory } from '../../enums/service-category.enum';
 import { DayOfWeek } from '../../enums/day-of-week.enum';
 
 export class CreateServiceDto {
-  @ApiProperty({ maxLength: 200 })
+  @ApiProperty({ maxLength: 50 })
+  @Transform(({ value }) =>
+    typeof value === 'string'
+      ? value.trim().replace(/\s+/g, ' ')
+      : value,
+  )//เอาช่องว่างที่เกินออก และแทนที่ด้วยช่องว่างเดียว กับ ช่องว่างหน้าหลังออก
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
+  @IsNotEmpty({ message: 'name must not be empty or whitespace only' })
+  @MaxLength(50) 
+  @Matches(/^[^<>]*$/, { message: 'name must not contain HTML tags' })
   name!: string;
 
   @ApiProperty()
