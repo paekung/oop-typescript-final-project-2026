@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, FindOptionsWhere } from 'typeorm';
 import { ServiceEntity } from '../entities/service.entity';
 import { AppointmentEntity } from '../entities/appointment.entity';
 import { CreateServiceDto } from '../dto/service/create-service.dto';
@@ -8,6 +8,7 @@ import { UpdateServiceDto } from '../dto/service/update-service.dto';
 import { PatchServiceDto } from '../dto/service/patch-service.dto';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 import { DayOfWeek } from '../enums/day-of-week.enum';
+import { ServiceCategory } from '../enums/service-category.enum';
 
 @Injectable()
 export class ServiceService {
@@ -18,8 +19,11 @@ export class ServiceService {
     private readonly appointmentRepo: Repository<AppointmentEntity>,
   ) {}
 
-  async findAll(): Promise<ServiceEntity[]> {
-    return this.serviceRepo.find();
+  async findAll(filter: { category?: ServiceCategory; isActive?: boolean } = {}): Promise<ServiceEntity[]> {
+    const where: FindOptionsWhere<ServiceEntity> = {};
+    if (filter.category) where.category = filter.category;
+    if (filter.isActive !== undefined) where.isActive = filter.isActive;
+    return this.serviceRepo.find({ where });
   }
 
   async findById(id: string): Promise<ServiceEntity> {
@@ -46,7 +50,7 @@ export class ServiceService {
   }
 
   async delete(id: string): Promise<void> {
-    const service = await this.findById(id); //ตรวจสอบว่ามี Service อยู่จริงมั้ย
+    await this.findById(id); //ตรวจสอบว่ามี Service อยู่จริงมั้ย
     
     // Check for active appointments before deleting
     const activeAppointments = await this.appointmentRepo.find({
@@ -72,7 +76,12 @@ export class ServiceService {
     }
 
     // 1. ตรวจสอบรูปแบบวันที่และวันเปิดให้บริการ
-    const date = new Date(dateString);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+    }
+    // แยก year/month/day แล้วสร้าง local Date เพื่อป้องกัน UTC offset ทำให้ getDay() คืนวันผิด
+    const [yyyy, mm, dd] = dateString.split('-').map(Number);
+    const date = new Date(yyyy, mm - 1, dd);
     if (isNaN(date.getTime())) {
       throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
     }

@@ -6,6 +6,7 @@ import { UpdateServiceDto } from '../dto/service/update-service.dto';
 import { PatchServiceDto } from '../dto/service/patch-service.dto';
 import { ApiResponse as CustomApiResponse } from '../interfaces/api-response.interface';
 import { ServiceEntity } from '../entities/service.entity';
+import { ServiceCategory } from '../enums/service-category.enum';
 @ApiTags('services')
 @Controller('services')
 export class ServiceController {
@@ -13,9 +14,17 @@ export class ServiceController {
 
   @Get()
   @ApiOperation({ summary: 'Get all services' })
+  @ApiQuery({ name: 'category', enum: ServiceCategory, required: false })
+  @ApiQuery({ name: 'isActive', type: 'boolean', required: false })
   @ApiResponse({ status: 200, description: 'Return all services' })
-  async findAll(): Promise<CustomApiResponse<ServiceEntity[]>> {
-    const data = await this.serviceService.findAll();
+  async findAll(
+    @Query('category') category?: string,
+    @Query('isActive') isActive?: string,
+  ): Promise<CustomApiResponse<ServiceEntity[]>> {
+    const filter: { category?: ServiceCategory; isActive?: boolean } = {};
+    if (category) filter.category = category.toUpperCase() as ServiceCategory;
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    const data = await this.serviceService.findAll(filter);
     return { success: true, message: 'Services retrieved successfully', data };
   }
 
@@ -45,6 +54,7 @@ export class ServiceController {
   @ApiParam({ name: 'id', type: 'string' })
   @ApiBody({ type: UpdateServiceDto })
   @ApiResponse({ status: 200, description: 'Service updated successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'Service not found' })
   async update(
     @Param('id') id: string,

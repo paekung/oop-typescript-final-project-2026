@@ -18,7 +18,7 @@ export class EndTimeAfterStartTimeConstraint implements ValidatorConstraintInter
 }
 
 export class CreateServiceDto {
-  @ApiProperty({ maxLength: 50 })
+  @ApiProperty({ maxLength: 200 })
   @Transform(({ value }) =>
     typeof value === 'string'
       ? value.trim().replace(/\s+/g, ' ')
@@ -26,7 +26,7 @@ export class CreateServiceDto {
   )//เอาช่องว่างที่เกินออก และแทนที่ด้วยช่องว่างเดียว กับ ช่องว่างหน้าหลังออก
   @IsString()
   @IsNotEmpty({ message: 'name must not be empty or whitespace only' })
-  @MaxLength(50)
+  @MaxLength(200)
   @Matches(/^[^<>]*$/, { message: 'name must not contain HTML tags' })
   name!: string;
 
@@ -61,7 +61,7 @@ export class CreateServiceDto {
   @Max(10000000)
   price!: number;
 
-  @ApiProperty({ maxLength: 50 })
+  @ApiProperty({ maxLength: 200 })
   @Transform(({ value }) =>
     typeof value === 'string'
       ? value.trim().replace(/\s+/g, ' ')
@@ -69,7 +69,7 @@ export class CreateServiceDto {
   )
   @IsString()
   @IsNotEmpty({ message: 'providerName must not be empty or whitespace only' })
-  @MaxLength(50)
+  @MaxLength(200)
   @Matches(/^[^<>]*$/, { message: 'providerName must not contain HTML tags' })
   providerName!: string;
 

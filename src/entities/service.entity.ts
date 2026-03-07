@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { ServiceCategory } from '../enums/service-category.enum';
 import { DayOfWeek } from '../enums/day-of-week.enum';
-// Temporarily commenting out AppointmentEntity import until the file is created
 import { AppointmentEntity } from './appointment.entity';
 
 @Entity('services')
@@ -21,7 +20,12 @@ export class ServiceEntity {
   @Column({ type: 'int' })
   durationMinutes!: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
   price!: number;
 
   @Column({ length: 200 })
@@ -51,7 +55,6 @@ export class ServiceEntity {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  // Temporarily commenting out appointments relation until AppointmentEntity is available
   @OneToMany(() => AppointmentEntity, (appointment) => appointment.service)
   appointments!: AppointmentEntity[];
 }
