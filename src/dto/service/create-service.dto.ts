@@ -1,8 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsNumber, Matches, IsArray, ArrayMinSize, IsBoolean, MaxLength, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsInt, Min, Max, IsNumber, Matches, IsArray, ArrayMinSize, IsBoolean, MaxLength, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments, Validate } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ServiceCategory } from '../../enums/service-category.enum';
 import { DayOfWeek } from '../../enums/day-of-week.enum';
+
+@ValidatorConstraint({ name: 'endTimeAfterStartTime', async: false })
+export class EndTimeAfterStartTimeConstraint implements ValidatorConstraintInterface {
+  validate(endTime: string, args: ValidationArguments): boolean {
+    const dto = args.object as { startTime?: string };
+    if (!dto.startTime || !endTime) return true;
+    return endTime > dto.startTime;
+  }
+
+  defaultMessage(): string {
+    return 'endTime must be after startTime';
+  }
+}
 
 export class CreateServiceDto {
   @ApiProperty({ maxLength: 50 })
@@ -13,7 +26,7 @@ export class CreateServiceDto {
   )//เอาช่องว่างที่เกินออก และแทนที่ด้วยช่องว่างเดียว กับ ช่องว่างหน้าหลังออก
   @IsString()
   @IsNotEmpty({ message: 'name must not be empty or whitespace only' })
-  @MaxLength(50) 
+  @MaxLength(50)
   @Matches(/^[^<>]*$/, { message: 'name must not contain HTML tags' })
   name!: string;
 
@@ -47,7 +60,7 @@ export class CreateServiceDto {
   @Min(0)
   @Max(10000000)
   price!: number;
-  
+
   @ApiProperty({ maxLength: 50 })
   @Transform(({ value }) =>
     typeof value === 'string'
@@ -79,13 +92,16 @@ export class CreateServiceDto {
   availableDays!: DayOfWeek[];
 
   @ApiProperty({ example: '09:00' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @Matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, { message: 'startTime must be in HH:mm format' })
   startTime!: string;
 
   @ApiProperty({ example: '18:00' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @Matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, { message: 'endTime must be in HH:mm format' })
+  @Validate(EndTimeAfterStartTimeConstraint)
   endTime!: string;
 
   @ApiProperty({ minimum: 1 })
