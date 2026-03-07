@@ -107,11 +107,13 @@ export class CreateServiceDto {
   @ApiProperty({ minimum: 1 })
   @IsInt()
   @Min(1)
+  @Max(500)
   maxConcurrentBookings!: number;
 
   @ApiProperty({ minimum: 0 })
   @IsInt()
   @Min(0)
+  @Max(1440)
   bufferMinutes!: number;
 
   @ApiProperty()
