@@ -12,6 +12,8 @@ export class CreateServiceDto {
       : value,
   )//เอาช่องว่างที่เกินออก และแทนที่ด้วยช่องว่างเดียว กับ ช่องว่างหน้าหลังออก
   @IsString()
+  @IsNotEmpty({ message: 'name must not be empty or whitespace only' })
+  @MaxLength(50) 
   name!: string;
 
   @ApiProperty()
