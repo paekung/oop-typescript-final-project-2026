@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, Patch, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Put, Param, Delete, Patch, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { AppointmentService } from '../services/appointment.service';
 import { AppointmentEntity } from '../entities/appointment.entity';
 import { CreateAppointmentDto } from '../dto/appointment/create-appointment.dto';
 import { UpdateAppointmentDto } from '../dto/appointment/update-appointment.dto';
 import { PatchAppointmentDto } from '../dto/appointment/patch-appointment.dto';
+import { CancelAppointmentDto } from '../dto/appointment/cancel-appointment.dto';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 import { ApiResponse as CustomApiResponse } from '../interfaces/api-response.interface';
 
@@ -39,7 +40,9 @@ export class AppointmentController {
   }
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new appointment' })
+  @ApiBody({ type: CreateAppointmentDto })
   @ApiResponse({ status: 201, description: 'Appointment created successfully' })
   @ApiResponse({ status: 400, description: 'Validation error or service inactive' })
   @ApiResponse({ status: 404, description: 'Service not found' })
@@ -52,6 +55,7 @@ export class AppointmentController {
   @Put(':id')
   @ApiOperation({ summary: 'Update an appointment entirely' })
   @ApiParam({ name: 'id', description: 'Appointment UUID' })
+  @ApiBody({ type: UpdateAppointmentDto })
   @ApiResponse({ status: 200, description: 'Appointment updated successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
@@ -64,6 +68,7 @@ export class AppointmentController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update an appointment partially' })
   @ApiParam({ name: 'id', description: 'Appointment UUID' })
+  @ApiBody({ type: PatchAppointmentDto })
   @ApiResponse({ status: 200, description: 'Appointment patched successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
@@ -85,11 +90,12 @@ export class AppointmentController {
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel an appointment (reason required)' })
   @ApiParam({ name: 'id', description: 'Appointment UUID' })
+  @ApiBody({ type: CancelAppointmentDto })
   @ApiResponse({ status: 200, description: 'Appointment cancelled successfully' })
   @ApiResponse({ status: 400, description: 'Missing reason or invalid status' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
-  async cancel(@Param('id') id: string, @Body() body: { cancellationReason: string }): Promise<CustomApiResponse<AppointmentEntity>> {
-    const data = await this.appointmentService.cancel(id, body?.cancellationReason);
+  async cancel(@Param('id') id: string, @Body() dto: CancelAppointmentDto): Promise<CustomApiResponse<AppointmentEntity>> {
+    const data = await this.appointmentService.cancel(id, dto.cancellationReason);
     return { success: true, message: 'Appointment cancelled successfully', data };
   }
 

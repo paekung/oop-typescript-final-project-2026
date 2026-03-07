@@ -41,38 +41,46 @@ export class AppointmentService {
     return validTransitions[currentStatus].includes(newStatus) ?? false;
   }
 
-  async createAppointment(dto: CreateAppointmentDto): Promise<AppointmentEntity> {
-    const service = await this.serviceRepo.findOneBy({ id: dto.serviceId });
+  private async validateAndCalculateBooking(serviceId: string,appointmentDateStr: string,startTime: string,excludeAppointmentId?: string,):Promise<
+  { serviceName: string; endTime: string }> {
+    const service = await this.serviceRepo.findOneBy({ id: serviceId });
     if (!service) throw new NotFoundException('Service not found');
     if (!service.isActive) throw new BadRequestException('Service is currently inactive');
 
-    const appointmentDate = new Date(dto.appointmentDate);
+    const appointmentDate = new Date(appointmentDateStr);
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
     if (appointmentDate < today) throw new BadRequestException('Appointment date cannot be in the past');
 
-    const days: DayOfWeek[] = [DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY];
+    const days: DayOfWeek[] = [
+      DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, 
+      DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY
+    ];
     const dayName = days[appointmentDate.getDay()];
     if (!service.availableDays.includes(dayName)) {
       throw new BadRequestException(`Service is not available on ${dayName}`);
     }
 
-    if (dto.startTime < service.startTime) throw new BadRequestException(`Service starts at ${service.startTime}`);
-    const endTime = this.addMinutes(dto.startTime, service.durationMinutes);
+    if (startTime < service.startTime) throw new BadRequestException(`Service starts at ${service.startTime}`);
+    const endTime = this.addMinutes(startTime, service.durationMinutes);
     if (endTime > service.endTime) throw new BadRequestException(`Service ends at ${service.endTime}`);
 
-    const existingAppointments = await this.appointmentRepo.find({
-      where: { 
-        serviceId: dto.serviceId, 
-        appointmentDate: dto.appointmentDate,
-        status: Not(AppointmentStatus.CANCELLED) 
-      }
-    });
+    const whereClause: FindOptionsWhere<AppointmentEntity> = { 
+      serviceId: serviceId, 
+      appointmentDate: appointmentDateStr,
+      status: Not(AppointmentStatus.CANCELLED) 
+    };
+    
+    if (excludeAppointmentId) {
+      whereClause.id = Not(excludeAppointmentId);
+    }
+
+    const existingAppointments = await this.appointmentRepo.find({ where: whereClause });
 
     let overlapCount = 0;
     for (const existing of existingAppointments) {
       const existingEndWithBuffer = this.addMinutes(existing.endTime, service.bufferMinutes);
-      if (this.isTimeOverlap(dto.startTime, endTime, existing.startTime, existingEndWithBuffer)) {
+      if (this.isTimeOverlap(startTime, endTime, existing.startTime, existingEndWithBuffer)) {
         overlapCount++;
       }
     }
@@ -81,10 +89,20 @@ export class AppointmentService {
       throw new ConflictException('Time slot is fully booked');
     }
 
+    return { serviceName: service.name, endTime };
+  }
+
+  async createAppointment(dto: CreateAppointmentDto): Promise<AppointmentEntity> {
+    const { serviceName, endTime } = await this.validateAndCalculateBooking(
+      dto.serviceId,
+      dto.appointmentDate,
+      dto.startTime
+    );
+
     const entity = this.appointmentRepo.create({
       ...dto,
-      serviceName: service.name,
-      endTime: endTime,
+      serviceName,
+      endTime,
       status: AppointmentStatus.PENDING,
     });
 
@@ -108,24 +126,50 @@ export class AppointmentService {
 
   async update(id: string, dto: UpdateAppointmentDto): Promise<AppointmentEntity> {
     const existing = await this.findById(id);
+
     if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(existing.status)) {
       throw new BadRequestException('Cannot modify a finalized appointment');
     }
+
+    const originalStatus = existing.status;
+
+    const targetServiceId = dto.serviceId ?? existing.serviceId;
+    const targetDate = dto.appointmentDate ?? existing.appointmentDate;
+    const targetStartTime = dto.startTime ?? existing.startTime;
+
+    const { serviceName, endTime } = await this.validateAndCalculateBooking(
+      targetServiceId,
+      targetDate,
+      targetStartTime,
+      id
+    );
+
     Object.assign(existing, dto);
+    existing.status = originalStatus;
+    existing.serviceName = serviceName; 
+    existing.endTime = endTime;         
+
     return this.appointmentRepo.save(existing);
   }
 
   async patch(id: string, dto: PatchAppointmentDto): Promise<AppointmentEntity> {
     const existing = await this.findById(id);
+    
+    if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(existing.status)) {
+      throw new BadRequestException('Cannot modify a finalized appointment');
+    }
+    
     if (dto.status) {
       if (!this.isValidTransition(existing.status, dto.status)) {
         throw new BadRequestException(`Cannot change status from ${existing.status} to ${dto.status}`);
       }
       existing.status = dto.status;
     }
+    
     if (dto.cancellationReason !== undefined) {
       existing.cancellationReason = dto.cancellationReason;
     }
+    
     return this.appointmentRepo.save(existing);
   }
 
