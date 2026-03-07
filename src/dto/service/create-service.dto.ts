@@ -17,9 +17,16 @@ export class CreateServiceDto {
   @Matches(/^[^<>]*$/, { message: 'name must not contain HTML tags' })
   name!: string;
 
-  @ApiProperty()
+  @ApiProperty({ maxLength: 500 })
+  @Transform(({ value }) =>
+    typeof value === 'string'
+      ? value.trim().replace(/\s+/g, ' ')
+      : value,
+  )
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'description must not be empty or whitespace only' })
+  @MaxLength(500)
+  @Matches(/^[^<>]*$/, { message: 'description must not contain HTML tags' })
   description!: string;
 
   @ApiProperty({ enum: ServiceCategory })
