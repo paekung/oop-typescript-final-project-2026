@@ -43,10 +43,11 @@ export class CreateServiceDto {
   durationMinutes!: number;
 
   @ApiProperty({ minimum: 0 })
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'price must be a number with up to 2 decimal places' })
   @Min(0)
+  @Max(10000000)
   price!: number;
-
+  
   @ApiProperty({ maxLength: 200 })
   @IsString()
   @IsNotEmpty()
