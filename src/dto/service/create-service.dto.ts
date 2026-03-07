@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsNumber, Matches, IsArray, ArrayMinSize, IsBoolean, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsNumber, Matches, IsArray, ArrayMinSize, IsBoolean, MaxLength, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ServiceCategory } from '../../enums/service-category.enum';
 import { DayOfWeek } from '../../enums/day-of-week.enum';
@@ -39,6 +39,7 @@ export class CreateServiceDto {
   @ApiProperty({ minimum: 1 })
   @IsInt()
   @Min(1)
+  @Max(1440)
   durationMinutes!: number;
 
   @ApiProperty({ minimum: 0 })
