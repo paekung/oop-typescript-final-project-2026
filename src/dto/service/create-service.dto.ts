@@ -14,6 +14,7 @@ export class CreateServiceDto {
   @IsString()
   @IsNotEmpty({ message: 'name must not be empty or whitespace only' })
   @MaxLength(50) 
+  @Matches(/^[^<>]*$/, { message: 'name must not contain HTML tags' })
   name!: string;
 
   @ApiProperty()
