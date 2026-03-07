@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsInt, Min, Max, IsNumber, Matches, IsArray, ArrayMinSize, IsBoolean, MaxLength, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments, Validate } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsInt, Min,Max, IsNumber, Matches, IsArray, ArrayMinSize,ArrayMaxSize, IsBoolean, MaxLength, ArrayUnique, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments, Validate } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ServiceCategory } from '../../enums/service-category.enum';
 import { DayOfWeek } from '../../enums/day-of-week.enum';
@@ -76,6 +76,8 @@ export class CreateServiceDto {
   @ApiProperty({ enum: DayOfWeek, isArray: true })
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(7)
+  @ArrayUnique()
   @Transform(({ value }) => {
     // 1. ถ้าส่งมาเป็น Array ให้ map วนลูปแปลงทีละตัว
     if (Array.isArray(value)) {
