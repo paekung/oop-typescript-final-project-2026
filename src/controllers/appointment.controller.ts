@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Put, Param, Delete, Patch, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AppointmentService } from '../services/appointment.service';
+import { AppointmentEntity } from '../entities/appointment.entity';
 import { CreateAppointmentDto } from '../dto/appointment/create-appointment.dto';
 import { UpdateAppointmentDto } from '../dto/appointment/update-appointment.dto';
 import { PatchAppointmentDto } from '../dto/appointment/patch-appointment.dto';
@@ -22,7 +23,7 @@ export class AppointmentController {
     @Query('status') status?: AppointmentStatus,
     @Query('serviceId') serviceId?: string,
     @Query('date') date?: string,
-  ): Promise<CustomApiResponse<any>> {
+  ): Promise<CustomApiResponse<AppointmentEntity[]>> {
     const data = await this.appointmentService.findAll(status, serviceId, date);
     return { success: true, message: 'Appointments retrieved successfully', data };
   }
@@ -32,7 +33,7 @@ export class AppointmentController {
   @ApiParam({ name: 'id', description: 'Appointment UUID' })
   @ApiResponse({ status: 200, description: 'Return an appointment' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
-  async findOne(@Param('id') id: string): Promise<CustomApiResponse<any>> {
+  async findOne(@Param('id') id: string): Promise<CustomApiResponse<AppointmentEntity>> {
     const data = await this.appointmentService.findById(id);
     return { success: true, message: 'Appointment retrieved successfully', data };
   }
@@ -43,7 +44,7 @@ export class AppointmentController {
   @ApiResponse({ status: 400, description: 'Validation error or service inactive' })
   @ApiResponse({ status: 404, description: 'Service not found' })
   @ApiResponse({ status: 409, description: 'Time slot conflict' })
-  async create(@Body() dto: CreateAppointmentDto): Promise<CustomApiResponse<any>> {
+  async create(@Body() dto: CreateAppointmentDto): Promise<CustomApiResponse<AppointmentEntity>> {
     const data = await this.appointmentService.createAppointment(dto);
     return { success: true, message: 'Appointment created successfully', data };
   }
@@ -55,7 +56,7 @@ export class AppointmentController {
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
   @ApiResponse({ status: 409, description: 'Time slot conflict' })
-  async update(@Param('id') id: string, @Body() dto: UpdateAppointmentDto): Promise<CustomApiResponse<any>> {
+  async update(@Param('id') id: string, @Body() dto: UpdateAppointmentDto): Promise<CustomApiResponse<AppointmentEntity>> {
     const data = await this.appointmentService.update(id, dto);
     return { success: true, message: 'Appointment updated successfully', data };
   }
@@ -66,7 +67,7 @@ export class AppointmentController {
   @ApiResponse({ status: 200, description: 'Appointment patched successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
-  async patch(@Param('id') id: string, @Body() dto: PatchAppointmentDto): Promise<CustomApiResponse<any>> {
+  async patch(@Param('id') id: string, @Body() dto: PatchAppointmentDto): Promise<CustomApiResponse<AppointmentEntity>> {
     const data = await this.appointmentService.patch(id, dto);
     return { success: true, message: 'Appointment patched successfully', data };
   }
@@ -87,7 +88,7 @@ export class AppointmentController {
   @ApiResponse({ status: 200, description: 'Appointment cancelled successfully' })
   @ApiResponse({ status: 400, description: 'Missing reason or invalid status' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
-  async cancel(@Param('id') id: string, @Body() body: { cancellationReason: string }): Promise<CustomApiResponse<any>> {
+  async cancel(@Param('id') id: string, @Body() body: { cancellationReason: string }): Promise<CustomApiResponse<AppointmentEntity>> {
     const data = await this.appointmentService.cancel(id, body?.cancellationReason);
     return { success: true, message: 'Appointment cancelled successfully', data };
   }
@@ -98,7 +99,7 @@ export class AppointmentController {
   @ApiResponse({ status: 200, description: 'Appointment confirmed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid status (must be PENDING)' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
-  async confirm(@Param('id') id: string): Promise<CustomApiResponse<any>> {
+  async confirm(@Param('id') id: string): Promise<CustomApiResponse<AppointmentEntity>> {
     const data = await this.appointmentService.confirm(id);
     return { success: true, message: 'Appointment confirmed successfully', data };
   }

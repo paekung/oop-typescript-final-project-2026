@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, FindOptionsWhere } from 'typeorm';
 import { AppointmentEntity } from '../entities/appointment.entity';
 import { ServiceEntity } from '../entities/service.entity';
 import { CreateAppointmentDto } from '../dto/appointment/create-appointment.dto';
 import { UpdateAppointmentDto } from '../dto/appointment/update-appointment.dto';
 import { PatchAppointmentDto } from '../dto/appointment/patch-appointment.dto';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
+import { DayOfWeek } from '../enums/day-of-week.enum';
 
 @Injectable()
 export class AppointmentService {
@@ -37,7 +38,7 @@ export class AppointmentService {
       [AppointmentStatus.CANCELLED]: [],
       [AppointmentStatus.NO_SHOW]: [],
     };
-    return validTransitions[currentStatus].includes(newStatus);
+    return validTransitions[currentStatus].includes(newStatus) ?? false;
   }
 
   async createAppointment(dto: CreateAppointmentDto): Promise<AppointmentEntity> {
@@ -50,9 +51,8 @@ export class AppointmentService {
     today.setHours(0, 0, 0, 0); 
     if (appointmentDate < today) throw new BadRequestException('Appointment date cannot be in the past');
 
-    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const days: DayOfWeek[] = [DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY];
     const dayName = days[appointmentDate.getDay()];
-    // @ts-ignore
     if (!service.availableDays.includes(dayName)) {
       throw new BadRequestException(`Service is not available on ${dayName}`);
     }
@@ -92,7 +92,7 @@ export class AppointmentService {
   }
 
   async findAll(status?: AppointmentStatus, serviceId?: string, date?: string): Promise<AppointmentEntity[]> {
-    const whereClause: any = {};
+    const whereClause: FindOptionsWhere<AppointmentEntity> = {};
     if (status) whereClause.status = status;
     if (serviceId) whereClause.serviceId = serviceId;
     if (date) whereClause.appointmentDate = date;
@@ -123,7 +123,7 @@ export class AppointmentService {
       }
       existing.status = dto.status;
     }
-    if (dto.cancellationReason) {
+    if (dto.cancellationReason !== undefined) {
       existing.cancellationReason = dto.cancellationReason;
     }
     return this.appointmentRepo.save(existing);
