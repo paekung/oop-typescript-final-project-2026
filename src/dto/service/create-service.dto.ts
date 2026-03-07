@@ -30,6 +30,9 @@ export class CreateServiceDto {
   description!: string;
 
   @ApiProperty({ enum: ServiceCategory })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsEnum(ServiceCategory)
   category!: ServiceCategory;
 
