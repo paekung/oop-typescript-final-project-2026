@@ -48,10 +48,16 @@ export class CreateServiceDto {
   @Max(10000000)
   price!: number;
   
-  @ApiProperty({ maxLength: 200 })
+  @ApiProperty({ maxLength: 50 })
+  @Transform(({ value }) =>
+    typeof value === 'string'
+      ? value.trim().replace(/\s+/g, ' ')
+      : value,
+  )
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
+  @IsNotEmpty({ message: 'providerName must not be empty or whitespace only' })
+  @MaxLength(50)
+  @Matches(/^[^<>]*$/, { message: 'providerName must not contain HTML tags' })
   providerName!: string;
 
   @ApiProperty({ enum: DayOfWeek, isArray: true })
