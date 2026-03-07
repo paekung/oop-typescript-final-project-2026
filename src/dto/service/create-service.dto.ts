@@ -63,6 +63,18 @@ export class CreateServiceDto {
   @ApiProperty({ enum: DayOfWeek, isArray: true })
   @IsArray()
   @ArrayMinSize(1)
+  @Transform(({ value }) => {
+    // 1. ถ้าส่งมาเป็น Array ให้ map วนลูปแปลงทีละตัว
+    if (Array.isArray(value)) {
+      return value.map((v) => (typeof v === 'string' ? v.trim().toUpperCase() : v));
+    }
+    // 2. ถ้าเผลอส่งมาเป็น String เดี่ยวๆ เช่น "monday" ให้แปลงเป็น Array ให้เลย
+    if (typeof value === 'string') {
+      return [value.trim().toUpperCase()];
+    }
+    // 3. นอกนั้นให้คืนค่าเดิมไปโดน Validate ด่าตามระเบียบ
+    return value;
+  })
   @IsEnum(DayOfWeek, { each: true })
   availableDays!: DayOfWeek[];
 
