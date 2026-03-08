@@ -1,313 +1,464 @@
 # Appointment Booking System API
 
-## 📌 Project Overview
+REST API สำหรับจัดการบริการ (Service) และการจองนัดหมาย (Appointment) พัฒนาด้วย NestJS Framework และ TypeScript
 
-โปรเจคนี้เป็น **NestJS Backend REST API** สำหรับระบบจองบริการและนัดหมาย
-
-ระบบรองรับการจัดการข้อมูลหลัก 2 ส่วน:
-
-* **Service** — ข้อมูลบริการ เช่น ชื่อบริการ หมวดหมู่ ราคา ระยะเวลา และเวลาที่เปิดให้จอง
-* **Appointment** — ข้อมูลการนัดหมายของลูกค้า เช่น วันที่ เวลา สถานะการจอง และหมายเหตุ
-
-โปรเจคนี้ถูกพัฒนาตามโจทย์ Model Set 6 ของรายวิชา OOP TypeScript Final Project โดยเน้น:
-
-* การออกแบบ REST API ด้วย NestJS
-* การใช้ TypeScript แบบ strict และ type-safe
-* การจัดการ validation, exception handling และ Swagger documentation
-* การออกแบบ business logic สำหรับการจองเวลาและตรวจสอบเงื่อนไขของระบบ
+โปรเจคนี้เป็นส่วนหนึ่งของรายวิชา OOP TypeScript Final Project — **Model Set 6: Appointment Booking System**
 
 ---
 
-## 👥 Team Structure
+## Project Information
 
-ทีมพัฒนา:
+| รายการ | รายละเอียด |
+|---|---|
+| Model Set | 6 — Appointment Booking System |
+| Student ID Sum | 204033336 (68011120 + 68011088 + 68011128) |
+| Calculation | 204033336 mod 10 = **6** |
 
-* สรวิศ วงค์ทิม — `bsrxwt`
-* ศุภกิตติ์ ตันตวาที — `paekung`
-* สหภูมิ รัตนาวิวัฒน์พงศ์ — `Meseal`
+## Team Members
 
----
-
-## 🛠 Technology Stack
-
-* **Framework:** NestJS
-* **Language:** TypeScript
-* **API Style:** REST API
-* **Database:** JSON-based (file-based หรือ in-memory)
-* **API Documentation:** Swagger (OpenAPI)
-* **Linting:** ESLint (TypeScript ESLint)
+| ชื่อ-นามสกุล | GitHub Username | รหัสนักศึกษา | หน้าที่ |
+|---|---|---:|---|
+| สรวิศ วงค์ทิม | `bsrxwt` | 68011120 | Service module |
+| ศุภกิตติ์ ตันตวาที | `paekung` | 68011088 | Shared infrastructure, integration, documentation |
+| สหภูมิ รัตนาวิวัฒน์พงศ์ | `Meseal` | 68011128 | Appointment module |
 
 ---
 
-## 📁 Project Structure
+## Technology Stack
+
+| เทคโนโลยี | เวอร์ชัน | วัตถุประสงค์ |
+|---|---|---|
+| NestJS | 10.x | Backend framework |
+| TypeScript | 5.1.3 | Type-safe development (strict mode) |
+| TypeORM | 0.3.28 | ORM และ repository pattern |
+| SQLite | better-sqlite3 12.6.2 | File-based database |
+| Swagger | @nestjs/swagger 7.1.0 | API documentation (OpenAPI) |
+| class-validator | 0.14.4 | Request validation |
+| class-transformer | 0.5.1 | Data transformation |
+| Jest | 29.5.0 | Unit testing |
+| Supertest | 6.3.3 | E2E testing |
+| ESLint | 8.x | Linting (strict, no `any`) |
+
+---
+
+## Core Data Models
+
+ระบบประกอบด้วย 2 Core Models ที่มีความสัมพันธ์แบบ One-to-Many
+
+### Service (14 attributes + timestamps)
+
+เก็บข้อมูลบริการที่เปิดให้จองนัดหมาย
+
+| Attribute | Type | Description |
+|---|---|---|
+| `id` | UUID (PK) | รหัสบริการ (auto-generated) |
+| `name` | string | ชื่อบริการ |
+| `description` | text | รายละเอียดบริการ |
+| `category` | ServiceCategory (enum) | หมวดหมู่บริการ |
+| `durationMinutes` | number | ระยะเวลาให้บริการ (นาที) |
+| `price` | decimal | ราคาบริการ |
+| `providerName` | string | ชื่อผู้ให้บริการ |
+| `availableDays` | DayOfWeek[] (enum array) | วันที่เปิดให้บริการ |
+| `startTime` | string (HH:mm) | เวลาเปิดให้บริการ |
+| `endTime` | string (HH:mm) | เวลาปิดให้บริการ |
+| `maxConcurrentBookings` | number | จำนวนจองพร้อมกันสูงสุด |
+| `bufferMinutes` | number | เวลาพักระหว่างนัด (นาที) |
+| `isActive` | boolean | สถานะเปิด/ปิดบริการ |
+| `createdAt` | Date | วันที่สร้าง |
+| `updatedAt` | Date | วันที่แก้ไขล่าสุด |
+
+### Appointment (13 attributes + timestamps)
+
+เก็บข้อมูลการจองนัดหมายของลูกค้า
+
+| Attribute | Type | Description |
+|---|---|---|
+| `id` | UUID (PK) | รหัสนัดหมาย (auto-generated) |
+| `serviceId` | string (FK) | รหัสบริการที่จอง |
+| `serviceName` | string | ชื่อบริการ (cached) |
+| `customerName` | string | ชื่อลูกค้า |
+| `customerEmail` | string | อีเมลลูกค้า |
+| `customerPhone` | string | เบอร์โทรลูกค้า |
+| `appointmentDate` | string (YYYY-MM-DD) | วันที่นัดหมาย |
+| `startTime` | string (HH:mm) | เวลาเริ่มนัดหมาย |
+| `endTime` | string (HH:mm) | เวลาสิ้นสุดนัดหมาย |
+| `status` | AppointmentStatus (enum) | สถานะนัดหมาย |
+| `notes` | text | หมายเหตุจากลูกค้า |
+| `cancellationReason` | text (nullable) | เหตุผลการยกเลิก |
+| `createdAt` | Date | วันที่สร้าง |
+| `updatedAt` | Date | วันที่แก้ไขล่าสุด |
+
+### Relationship
+
+```
+Service (1) ──────── (*) Appointment
+         OneToMany / ManyToOne
+```
+
+- Service หนึ่งรายการสามารถมีได้หลาย Appointment
+- Appointment แต่ละรายการอ้างอิงไปยัง Service เดียว ผ่าน `serviceId`
+
+---
+
+## Enums
+
+ระบบใช้ Enum 3 ตัวเพื่อควบคุมค่าที่เป็นไปได้ของ attribute ต่าง ๆ
+
+### ServiceCategory
+
+หมวดหมู่ของบริการ
+
+| ค่า | ความหมาย |
+|---|---|
+| `HEALTH` | สุขภาพ |
+| `BEAUTY` | ความงาม |
+| `CONSULTING` | ที่ปรึกษา |
+| `EDUCATION` | การศึกษา |
+| `FITNESS` | ฟิตเนส |
+| `OTHER` | อื่น ๆ |
+
+### AppointmentStatus
+
+สถานะของการนัดหมาย
+
+| ค่า | ความหมาย |
+|---|---|
+| `PENDING` | รอดำเนินการ |
+| `CONFIRMED` | ยืนยันแล้ว |
+| `COMPLETED` | เสร็จสิ้น |
+| `CANCELLED` | ยกเลิก |
+| `NO_SHOW` | ไม่มาตามนัด |
+
+### DayOfWeek
+
+วันในสัปดาห์ ใช้กำหนดวันที่เปิดให้บริการ
+
+`MONDAY` | `TUESDAY` | `WEDNESDAY` | `THURSDAY` | `FRIDAY` | `SATURDAY` | `SUNDAY`
+
+---
+
+## API Endpoints
+
+### Service Endpoints
+
+| Method | Path | Status Code | Description |
+|---|---|---|---|
+| `GET` | `/services` | 200 | ดึงรายการบริการทั้งหมด (รองรับ filter ด้วย `category` และ `isActive`) |
+| `GET` | `/services/:id` | 200 | ดึงข้อมูลบริการตาม ID |
+| `POST` | `/services` | 201 | สร้างบริการใหม่ |
+| `PUT` | `/services/:id` | 200 | แก้ไขบริการทั้งหมด (full update) |
+| `PATCH` | `/services/:id` | 200 | แก้ไขบริการบางส่วน (partial update) |
+| `DELETE` | `/services/:id` | 200 | ลบบริการ (ต้องไม่มี appointment ที่ active อยู่) |
+| `GET` | `/services/:id/available-slots?date=YYYY-MM-DD` | 200 | ดูช่วงเวลาว่างสำหรับจองในวันที่กำหนด |
+
+### Appointment Endpoints
+
+| Method | Path | Status Code | Description |
+|---|---|---|---|
+| `GET` | `/appointments` | 200 | ดึงรายการนัดหมายทั้งหมด |
+| `GET` | `/appointments/:id` | 200 | ดึงข้อมูลนัดหมายตาม ID |
+| `POST` | `/appointments` | 201 | สร้างการจองใหม่ (ตรวจสอบ time conflict อัตโนมัติ) |
+| `PUT` | `/appointments/:id` | 200 | แก้ไขนัดหมายทั้งหมด (full update) |
+| `PATCH` | `/appointments/:id` | 200 | แก้ไขนัดหมายบางส่วน (partial update) |
+| `DELETE` | `/appointments/:id` | 200 | ลบนัดหมาย |
+| `PATCH` | `/appointments/:id/confirm` | 200 | ยืนยันนัดหมาย (เปลี่ยนสถานะเป็น CONFIRMED) |
+| `PATCH` | `/appointments/:id/cancel` | 200 | ยกเลิกนัดหมาย (ต้องระบุ `cancellationReason`) |
+
+---
+
+## Standard Response Format
+
+ทุก endpoint ใช้ response format เดียวกัน
+
+```ts
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T | null;
+}
+```
+
+### ตัวอย่าง Success Response
+
+```json
+{
+  "success": true,
+  "message": "Service created successfully",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Thai Massage",
+    "category": "HEALTH"
+  }
+}
+```
+
+### ตัวอย่าง Error Response
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "data": {
+    "errors": [
+      "startTime must be in HH:mm format",
+      "price must be a positive number"
+    ]
+  }
+}
+```
+
+---
+
+## Validation Rules
+
+### Service Validation
+
+| Field | Rule |
+|---|---|
+| `name` | ต้องไม่ว่าง, ไม่เกิน 200 ตัวอักษร, ห้ามมี HTML tag |
+| `description` | ต้องไม่ว่าง |
+| `category` | ต้องเป็นค่าจาก `ServiceCategory` enum |
+| `durationMinutes` | ต้องเป็นจำนวนเต็ม, ค่า 1–1440 |
+| `price` | ต้อง >= 0 |
+| `providerName` | ต้องไม่ว่าง, ห้ามมี HTML tag |
+| `availableDays` | ต้องมีอย่างน้อย 1 วัน, ค่าจาก `DayOfWeek` enum |
+| `startTime` / `endTime` | ต้องอยู่ในรูปแบบ HH:mm, endTime ต้องมากกว่า startTime |
+| `maxConcurrentBookings` | ต้อง >= 1 |
+| `bufferMinutes` | ต้อง >= 0 |
+
+### Appointment Validation
+
+| Field | Rule |
+|---|---|
+| `serviceId` | ต้องเป็น UUID |
+| `customerName` | ต้องไม่ว่าง, ห้ามมี HTML tag |
+| `customerEmail` | ต้องเป็น email ที่ถูกต้อง |
+| `customerPhone` | ต้องเป็นรูปแบบเบอร์โทรไทย (เช่น 0812345678) |
+| `appointmentDate` | ต้องอยู่ในรูปแบบ YYYY-MM-DD |
+| `startTime` | ต้องอยู่ในรูปแบบ HH:mm |
+| `cancellationReason` | จำเป็นต้องระบุเมื่อยกเลิกนัดหมาย |
+
+---
+
+## Business Rules
+
+### การสร้างนัดหมาย
+- จองได้เฉพาะบริการที่มีสถานะ `isActive: true` เท่านั้น
+- วันที่นัดหมายต้องไม่เป็นวันในอดีต
+- วันนัดหมายต้องอยู่ในวันที่บริการเปิดให้จอง (`availableDays`)
+- เวลานัดหมายต้องอยู่ในช่วงเวลาเปิดให้บริการ (`startTime` - `endTime` ของ Service)
+- ระบบคำนวณ `endTime` ของ Appointment อัตโนมัติจาก `durationMinutes` ของ Service
+- ตรวจสอบ time slot conflict ก่อนสร้าง — หาก slot เต็มตาม `maxConcurrentBookings` จะตอบ `409 Conflict`
+
+### การแก้ไขนัดหมาย
+- ไม่อนุญาตให้แก้ไขนัดหมายที่อยู่ในสถานะ `COMPLETED`, `CANCELLED` หรือ `NO_SHOW`
+- การแก้ไขเวลาต้องผ่านการตรวจสอบ conflict เช่นเดียวกับการสร้าง
+
+### การยกเลิกนัดหมาย
+- ต้องระบุ `cancellationReason` ทุกครั้ง
+
+### การลบบริการ
+- ไม่สามารถลบ Service ที่มี Appointment ในสถานะ `PENDING` หรือ `CONFIRMED` อยู่
+
+### Available Slots
+- คำนวณช่วงเวลาว่างโดยอ้างอิงจากเวลาเปิด-ปิด, ระยะเวลา, buffer และนัดหมายที่จองแล้ว
+
+---
+
+## Error Handling
+
+ระบบใช้ Global Exception Filter (`HttpExceptionFilter`) เพื่อจัดการ error ทุกประเภทให้อยู่ในรูปแบบ `ApiResponse` เดียวกัน
+
+| HTTP Status | กรณีใช้งาน |
+|---|---|
+| `200` | ดำเนินการสำเร็จ |
+| `201` | สร้างข้อมูลใหม่สำเร็จ |
+| `400` | ข้อมูลไม่ถูกต้อง / validation failed |
+| `404` | ไม่พบข้อมูลที่ร้องขอ |
+| `409` | ข้อมูลขัดแย้ง (เช่น time slot เต็ม, ลบ service ที่มี active appointment) |
+
+ระบบออกแบบให้ไม่เกิด Error 500 จาก logic ที่สามารถป้องกันได้
+
+---
+
+## Project Structure
 
 ```text
 .
-├── subjects/
-│   ├── evaluation.md
-│   ├── models.md
-│   ├── requirement.md
-│   └── submission.md
 ├── src/
-│   ├── app.module.ts
+│   ├── main.ts                          # Bootstrap application
+│   ├── app.module.ts                    # Root module (TypeORM config)
 │   ├── controllers/
-│   │   └── service.controller.ts
-│   ├── dto/
-│   │   └── service/
-│   ├── entities/
-│   │   └── service.entity.ts
-│   ├── enums/
-│   │   ├── day-of-week.enum.ts
-│   │   └── service-category.enum.ts
-│   ├── filters/
-│   │   └── http-exception.filter.ts
-│   ├── interfaces/
-│   │   └── api-response.interface.ts
+│   │   ├── service.controller.ts        # Service HTTP handlers
+│   │   └── appointment.controller.ts    # Appointment HTTP handlers
 │   ├── services/
-│   │   └── service.service.ts
-│   └── main.ts
+│   │   ├── service.service.ts           # Service business logic
+│   │   └── appointment.service.ts       # Appointment business logic
+│   ├── entities/
+│   │   ├── service.entity.ts            # Service data model (TypeORM)
+│   │   └── appointment.entity.ts        # Appointment data model (TypeORM)
+│   ├── dto/
+│   │   ├── service/
+│   │   │   ├── create-service.dto.ts    # Create service request
+│   │   │   ├── update-service.dto.ts    # Full update request
+│   │   │   └── patch-service.dto.ts     # Partial update request
+│   │   └── appointment/
+│   │       ├── create-appointment.dto.ts  # Create appointment request
+│   │       ├── update-appointment.dto.ts  # Full update request
+│   │       ├── patch-appointment.dto.ts   # Partial update request
+│   │       └── cancel-appointment.dto.ts  # Cancel request (with reason)
+│   ├── enums/
+│   │   ├── service-category.enum.ts     # ServiceCategory enum
+│   │   ├── appointment-status.enum.ts   # AppointmentStatus enum
+│   │   └── day-of-week.enum.ts          # DayOfWeek enum
+│   ├── interfaces/
+│   │   └── api-response.interface.ts    # Standard ApiResponse<T>
+│   ├── filters/
+│   │   └── http-exception.filter.ts     # Global exception filter
+│   └── app.spec.ts                      # Unit tests
+├── docs/
+│   ├── DATA_MODEL.md                    # Data model documentation
+│   ├── UML.md                           # UML class diagram (Mermaid)
+│   └── submission-checklist.md          # Pre-submission checklist
+├── subjects/                            # Course requirements
+│   ├── requirement.md
+│   ├── models.md
+│   ├── evaluation.md
+│   └── submission.md
 ├── test/
-│   ├── app.e2e-spec.ts
-│   └── jest-e2e.json
-├── nest-cli.json
+│   ├── app.e2e-spec.ts                 # E2E tests
+│   └── jest-e2e.json                   # E2E test config
 ├── package.json
 ├── tsconfig.json
-└── README.md
+├── nest-cli.json
+├── .eslintrc.js
+└── .gitignore
 ```
-
-> 📌 หมายเหตุ: 
-* ในสถานะปัจจุบัน ฝั่ง `Service` ถูกสร้างแล้ว และฝั่ง `Appointment` จะถูกเพิ่มเข้ามาในโครงสร้างเดียวกัน
-* โฟลเดอร์ `filters/` และ `interfaces/` ใช้สำหรับ shared infrastructure ของทั้งระบบ
-* เอกสารเชิงลึกเพิ่มเติมจะถูกจัดเก็บในโฟลเดอร์ `docs/`
 
 ---
 
-## 🚀 Getting Started
+## Installation
 
-### 1. Install Dependencies
+### Prerequisites
 
-โปรเจคนี้ใช้ NestJS, TypeORM, SQLite, class-validator และ Swagger
+- Node.js 18 หรือใหม่กว่า
+- npm
+
+### ติดตั้ง Dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Run Development Server
+---
 
-เมื่อรันครั้งแรก ระบบจะสร้างไฟล์ `database.sqlite` อัตโนมัติจากการตั้งค่า TypeORM
+## Running the Project
+
+### Development Mode
 
 ```bash
 npm run start:dev
 ```
 
-### 3. Build for Production
+Application จะทำงานที่ `http://localhost:3000`
+
+### Build
 
 ```bash
 npm run build
 ```
 
-### 4. API Documentation (Swagger)
+### Production Mode
 
-เมื่อรันโปรเจคแล้ว สามารถเข้าดู Swagger ได้ที่:
+```bash
+npm run start:prod
+```
 
-```text
+---
+
+## Database
+
+- ใช้ SQLite ผ่าน `better-sqlite3`
+- ไฟล์ database: `database.sqlite` (สร้างอัตโนมัติเมื่อ application start)
+- ตั้งค่า TypeORM ใน `src/app.module.ts`
+- ใช้ `synchronize: true` สำหรับ development (auto sync schema)
+- ไฟล์ `database.sqlite` ถูก ignore ใน `.gitignore`
+
+---
+
+## API Documentation (Swagger)
+
+เมื่อ application ทำงานแล้ว สามารถเข้าถึง Swagger UI ได้ที่:
+
+```
 http://localhost:3000/api
 ```
 
-### 5. Default Application URL
+Swagger แสดง endpoint ทั้งหมด, request/response schema, และสามารถทดสอบ API ได้โดยตรง
 
-```text
-http://localhost:3000
+---
+
+## Testing
+
+### Unit Tests
+
+```bash
+npm test
+```
+
+### E2E Tests
+
+```bash
+npm run test:e2e
+```
+
+### Test Coverage
+
+```bash
+npm run test:cov
 ```
 
 ---
 
-## 🔌 API Summary
+## Linting
 
-API หลักของระบบแบ่งออกเป็น 2 resource คือ `services` และ `appointments`
-
-### Service Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/services` | ดึงรายการบริการทั้งหมด |
-| GET | `/services/:id` | ดึงข้อมูลบริการตาม ID |
-| POST | `/services` | สร้างบริการใหม่ |
-| PUT | `/services/:id` | อัปเดตข้อมูลบริการทั้งหมด |
-| PATCH | `/services/:id` | อัปเดตข้อมูลบริการบางส่วน |
-| DELETE | `/services/:id` | ลบบริการ |
-| GET | `/services/:id/available-slots?date=YYYY-MM-DD` | ดึงช่วงเวลาว่างของบริการในวันที่กำหนด |
-
-### Appointment Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/appointments` | ดึงรายการนัดหมายทั้งหมด |
-| GET | `/appointments/:id` | ดึงข้อมูลนัดหมายตาม ID |
-| POST | `/appointments` | สร้างการจองนัดหมายใหม่ |
-| PUT | `/appointments/:id` | อัปเดตข้อมูลนัดหมายทั้งหมด |
-| PATCH | `/appointments/:id` | อัปเดตข้อมูลนัดหมายบางส่วน |
-| DELETE | `/appointments/:id` | ลบนัดหมาย |
-| PATCH | `/appointments/:id/cancel` | ยกเลิกนัดหมายพร้อมเหตุผล |
-| PATCH | `/appointments/:id/confirm` | ยืนยันนัดหมาย |
-
-### Standard Response Format
-
-ทุก endpoint จะตอบกลับในรูปแบบ `ApiResponse<T>` เพื่อให้ success และ error responses มีโครงสร้างเดียวกัน
-
-```typescript
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T | null;
-}
+```bash
+npm run lint
 ```
 
-Swagger UI จะพร้อมใช้งานที่ `/api` เมื่อรันแอปสำเร็จ
+ESLint ถูกตั้งค่าให้บังคับ TypeScript strict mode และห้ามใช้ `any` type
 
 ---
 
-## 🧩 Model Sets
+## Documentation
 
-แต่ละกลุ่มต้องเลือก **Model Set 1 ชุด** จาก 10 ชุดที่มีให้
-
-**วิธีการเลือก Model Set:**
-1. นำ Student ID ของสมาชิกทุกคนในกลุ่มมารวมกัน (`sumStudentId`)
-2. นำผลรวม mod 10
-3. ค่าที่ได้ (0-9) จะเป็น Model Set ID ที่กลุ่มได้รับ
-
-**ตัวอย่าง:** 
-- สมาชิก 3 คน มี Student ID: 64123456, 64123457, 64123458
-- `sumStudentId` = 64123456 + 64123457 + 64123458 = 192370371
-- 192370371 mod 10 = 1 → **Model Set ID: "1"** (Blog / Content Platform)
-
-> 📌 **เมื่อได้ Model Set แล้ว ห้ามเปลี่ยน** เว้นแต่ได้รับอนุญาตจากอาจารย์
-
-**หลังจากเลือก Model Set แล้ว ให้บันทึกใน `package.json`:**
-```json
-{
-  "project": {
-    "model": {
-      "id": "1",
-      "name": "Blog / Content Platform"
-    },
-    "sumStudentId": 192370371
-  }
-}
-```
-
-**รายละเอียด Model Sets ทั้งหมด:** → [`subjects/models.md`](subjects/models.md)
+| เอกสาร | ไฟล์ | รายละเอียด |
+|---|---|---|
+| Data Model | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | รายละเอียด attribute ทั้งหมดของ Service และ Appointment |
+| UML Diagram | [docs/UML.md](docs/UML.md) | Class diagram แสดงโครงสร้างและความสัมพันธ์ของ model |
+| Submission Checklist | [docs/submission-checklist.md](docs/submission-checklist.md) | รายการตรวจสอบก่อนส่งงาน |
+| Swagger API | `http://localhost:3000/api` | Interactive API documentation |
 
 ---
 
-## 📐 Project Requirements (Summary)
+## Requirement Alignment
 
-### Data Model
-* ต้องเลือกใช้ **Model Set 1 ชุด** จาก 10 ชุดที่มีให้ (ดูรายละเอียดใน [`subjects/models.md`](subjects/models.md))
-* แต่ละ Model Set มี **Core Data Model 2 Models**
-* ต้องบันทึก Model Set ที่เลือกไว้ใน `package.json` (key `project`)
-* ใช้ TypeScript data type ให้ครบถ้วน
-* ต้องมีการใช้งาน **Enum อย่างน้อย 1 จุด**
-* ❌ **ห้ามใช้ `any` type ในทุกกรณี**
-
-### API Design
-* ทุก Model ต้องรองรับ **CRUD Operation ครบถ้วน**
-* ใช้ HTTP Method ให้ถูกต้องตามหลัก REST API:
-  * `GET /resources` - ดึงข้อมูลทั้งหมด
-  * `GET /resources/{id}` - ดึงข้อมูลตาม ID
-  * `POST /resources` - สร้างข้อมูลใหม่
-  * `PUT /resources/{id}` - อัปเดตข้อมูลทั้งหมด
-  * `PATCH /resources/{id}` - อัปเดตข้อมูลบางส่วน
-  * `DELETE /resources/{id}` - ลบข้อมูล
-* URL path ต้องตั้งชื่อให้สื่อความหมาย
-
-### Standard Response Format
-
-ทุก API ต้องใช้ Response Format แบบเดียวกัน:
-
-```typescript
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T | null;
-}
-```
-
-### Validation & Error Handling
-* ทุก API ต้องมีการ **validate ข้อมูล**
-* ใช้ **HTTP Status Code** ที่เหมาะสม:
-  * `200` - OK (GET, PUT, PATCH สำเร็จ)
-  * `201` - Created (POST สำเร็จ)
-  * `400` - Bad Request (Validation error)
-  * `403` - Forbidden (ไม่มีสิทธิ์)
-  * `404` - Not Found (ไม่พบข้อมูล)
-  * `500` - Internal Server Error (Server error)
-* ⚠️ **ไม่ควรเกิด Error 500 จาก logic ที่สามารถป้องกันได้**
-* หากพบ Error 500 มากกว่า 5 จุด อาจมีผลต่อการให้คะแนน
-
----
-
-## 📄 Documentation
-
-เอกสารรายละเอียดของโจทย์และข้อกำหนดทั้งหมดถูกจัดเก็บไว้ในโฟลเดอร์ `subjects/`
-
-### เอกสารโจทย์ (Project Specification)
-
-* 📘 **Project Requirement** — ขอบเขตและข้อกำหนดของโปรเจค
-  → [`subjects/requirement.md`](subjects/requirement.md)
-* 🧩 **Model Sets** — รายละเอียด Model Sets ทั้ง 10 ชุด
-  → [`subjects/models.md`](subjects/models.md)
-* 📦 **Submission Guideline** — รูปแบบและขั้นตอนการส่งงาน
-  → [`subjects/submission.md`](subjects/submission.md)
-* 🧮 **Evaluation Criteria** — เกณฑ์การให้คะแนนและการประเมินผล
-  → [`subjects/evaluation.md`](subjects/evaluation.md)
-
-### เอกสารทางเทคนิค (ต้องจัดทำ)
-
-* 🔌 **API Specification (Swagger)** — เอกสาร API ทุก Endpoint
-* 🧱 **Data Model Documentation** — เอกสารอธิบาย Data Model
-* 📊 **UML Diagram** — แผนภาพ UML ของ Data Model
-
----
-
-## 👥 Team & Contributors
-
-รายชื่อสมาชิกในกลุ่มต้องถูกระบุไว้ใน key `contributors` ภายในไฟล์ `package.json` โดยมีรูปแบบดังนี้:
-
-```json
-"contributors": [
-  {
-    "fullname": "ชื่อ-นามสกุล",
-    "username": "github-username",
-    "studentId": "รหัสนักศึกษา"
-  }
-]
-```
-
----
-
-## 🤖 AI Usage Policy
-
-* อนุญาตให้ใช้ AI (เช่น ChatGPT) ช่วยในการพัฒนาโปรเจค
-* นักศึกษาต้องสามารถอธิบายโค้ดและแนวคิดของระบบได้ด้วยตนเอง
-* หากไม่สามารถอธิบายได้ อาจมีผลต่อการประเมินคะแนน
-
----
-
-## ✅ Submission
-
-* ส่งงานเป็น **GitHub Repository URL** ในนามของ **Team Lead**
-* Repository ต้องสามารถเข้าถึงได้
-
----
-
-## 📝 Important Notes
-
-* โค้ดต้องอ่านง่าย เป็นระบบ และดูแลรักษาได้
-* ทุก request และ response ต้องกำหนด interface แบบ narrow type
-* ใช้ TypeScript strict mode (`strict: true` ใน tsconfig.json)
-* ESLint จะตรวจสอบและป้องกันการใช้ `any` type อัตโนมัติ
-
----
-
-📌 *This repository is intended for educational purposes only.*
+| Requirement | Status |
+|---|---|
+| ใช้ NestJS Framework | ตรงตาม |
+| ใช้ TypeScript แบบ strict (ไม่มี `any`) | ตรงตาม |
+| ใช้ JSON-based database (SQLite file-based) | ตรงตาม |
+| มี Core Data Model 2 ตัว (Service, Appointment) | ตรงตาม |
+| แต่ละ Model มี attribute >= 10 รายการ | ตรงตาม (Service: 14, Appointment: 13) |
+| มี Enum อย่างน้อย 1 จุด | ตรงตาม (3 enums: ServiceCategory, AppointmentStatus, DayOfWeek) |
+| CRUD ครบทุก Model | ตรงตาม (GET, POST, PUT, PATCH, DELETE) |
+| มี Standard Response Format | ตรงตาม (`ApiResponse<T>`) |
+| มี Validation ทุก endpoint | ตรงตาม (class-validator + Global ValidationPipe) |
+| ใช้ HTTP Status Code ที่เหมาะสม | ตรงตาม (200, 201, 400, 404, 409) |
+| ไม่เกิด Error 500 จาก logic ที่ป้องกันได้ | ตรงตาม (Global HttpExceptionFilter) |
+| มี Swagger API Documentation | ตรงตาม (`/api`) |
+| มี Data Model Documentation | ตรงตาม (`docs/DATA_MODEL.md`) |
+| มี UML Diagram | ตรงตาม (`docs/UML.md`) |
+| ไม่ใช้ `object` type โดยตรง ใช้ `interface` แทน | ตรงตาม |
+| สมาชิกทุกคนอยู่ใน `package.json` contributors | ตรงตาม |
+| สมาชิกทุกคนมี commit | ตรงตาม |
