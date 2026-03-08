@@ -2,6 +2,8 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CreateServiceDto } from '../dto/service/create-service.dto';
+import { UpdateServiceDto } from '../dto/service/update-service.dto';
 import { AppointmentEntity } from '../entities/appointment.entity';
 import { ServiceEntity } from '../entities/service.entity';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
@@ -35,6 +37,42 @@ const buildService = (overrides: Partial<ServiceEntity> = {}): ServiceEntity => 
   createdAt: new Date(),
   updatedAt: new Date(),
   appointments: [],
+  ...overrides,
+});
+
+const buildCreateServiceDto = (
+  overrides: Partial<CreateServiceDto> = {},
+): CreateServiceDto => ({
+  name: 'Haircut',
+  description: 'Standard haircut',
+  category: ServiceCategory.BEAUTY,
+  durationMinutes: 60,
+  price: 499,
+  providerName: 'Salon A',
+  availableDays: [DayOfWeek.MONDAY],
+  startTime: '09:00',
+  endTime: '12:00',
+  maxConcurrentBookings: 1,
+  bufferMinutes: 15,
+  isActive: true,
+  ...overrides,
+});
+
+const buildUpdateServiceDto = (
+  overrides: Partial<UpdateServiceDto> = {},
+): UpdateServiceDto => ({
+  name: 'Haircut',
+  description: 'Standard haircut',
+  category: ServiceCategory.BEAUTY,
+  durationMinutes: 60,
+  price: 499,
+  providerName: 'Salon A',
+  availableDays: [DayOfWeek.MONDAY],
+  startTime: '09:00',
+  endTime: '12:00',
+  maxConcurrentBookings: 1,
+  bufferMinutes: 15,
+  isActive: true,
   ...overrides,
 });
 
@@ -113,7 +151,7 @@ describe('ServiceService', () => {
   });
 
   it('create() should create and save a service', async () => {
-    const dto = { name: 'Massage' } as any;
+    const dto = buildCreateServiceDto({ name: 'Massage' });
     const entity = buildService({ name: 'Massage' });
     serviceRepo.create.mockReturnValue(entity);
     serviceRepo.save.mockResolvedValue(entity);
@@ -132,9 +170,11 @@ describe('ServiceService', () => {
     serviceRepo.merge.mockReturnValue(merged);
     serviceRepo.save.mockResolvedValue(merged);
 
-    const result = await service.update('service-1', { name: 'Updated name' } as any);
+    const dto = buildUpdateServiceDto({ name: 'Updated name' });
 
-    expect(serviceRepo.merge).toHaveBeenCalledWith(entity, { name: 'Updated name' });
+    const result = await service.update('service-1', dto);
+
+    expect(serviceRepo.merge).toHaveBeenCalledWith(entity, dto);
     expect(result).toEqual(merged);
   });
 

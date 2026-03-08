@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { CreateAppointmentDto } from '../dto/appointment/create-appointment.dto';
+import { UpdateAppointmentDto } from '../dto/appointment/update-appointment.dto';
 import { AppointmentEntity } from '../entities/appointment.entity';
 import { ServiceEntity } from '../entities/service.entity';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
@@ -55,6 +57,25 @@ const buildAppointment = (overrides: Partial<AppointmentEntity> = {}): Appointme
   ...overrides,
 });
 
+const buildCreateAppointmentDto = (
+  overrides: Partial<CreateAppointmentDto> = {},
+): CreateAppointmentDto => ({
+  serviceId: '123e4567-e89b-12d3-a456-426614174000',
+  customerName: 'Jane Doe',
+  customerEmail: 'jane@example.com',
+  customerPhone: '0812345678',
+  appointmentDate: '2099-03-10',
+  startTime: '09:00',
+  notes: '',
+  ...overrides,
+});
+
+const buildUpdateAppointmentDto = (
+  overrides: Partial<UpdateAppointmentDto> = {},
+): UpdateAppointmentDto => ({
+  ...overrides,
+});
+
 const formatLocalDate = (date: Date): string => {
   const yyyy = date.getFullYear();
   const mm = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -93,7 +114,7 @@ describe('AppointmentService', () => {
   });
 
   it('createAppointment() should create a pending appointment with calculated end time', async () => {
-    const dto = {
+    const dto = buildCreateAppointmentDto({
       serviceId: 'service-1',
       customerName: 'Jane Doe',
       customerEmail: 'jane@example.com',
@@ -101,7 +122,7 @@ describe('AppointmentService', () => {
       appointmentDate: '2099-03-10',
       startTime: '09:30',
       notes: 'Window seat',
-    };
+    });
     const entity = buildAppointment({
       startTime: '09:30',
       endTime: '10:30',
@@ -113,7 +134,7 @@ describe('AppointmentService', () => {
     appointmentRepo.create.mockReturnValue(entity);
     appointmentRepo.save.mockResolvedValue(entity);
 
-    const result = await service.createAppointment(dto as any);
+    const result = await service.createAppointment(dto);
 
     expect(appointmentRepo.create).toHaveBeenCalledWith({
       ...dto,
@@ -128,11 +149,11 @@ describe('AppointmentService', () => {
     serviceRepo.findOneBy.mockResolvedValue(null);
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'missing',
         appointmentDate: '2099-03-10',
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -140,11 +161,11 @@ describe('AppointmentService', () => {
     serviceRepo.findOneBy.mockResolvedValue(buildService({ isActive: false }));
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -155,11 +176,11 @@ describe('AppointmentService', () => {
     serviceRepo.findOneBy.mockResolvedValue(buildService());
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: formatLocalDate(yesterday),
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -180,11 +201,11 @@ describe('AppointmentService', () => {
     serviceRepo.findOneBy.mockResolvedValue(buildService({ availableDays: unavailableDays }));
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: serviceDate,
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -192,11 +213,11 @@ describe('AppointmentService', () => {
     serviceRepo.findOneBy.mockResolvedValue(buildService({ startTime: '10:00' }));
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:30',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -204,11 +225,11 @@ describe('AppointmentService', () => {
     serviceRepo.findOneBy.mockResolvedValue(buildService({ endTime: '10:00' }));
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:30',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -219,11 +240,11 @@ describe('AppointmentService', () => {
     ]);
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '10:05',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -259,7 +280,9 @@ describe('AppointmentService', () => {
   it('update() should reject finalized appointments', async () => {
     appointmentRepo.findOneBy.mockResolvedValue(buildAppointment({ status: AppointmentStatus.COMPLETED }));
 
-    await expect(service.update('appointment-1', { startTime: '11:00' } as any)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.update('appointment-1', buildUpdateAppointmentDto({ startTime: '11:00' })),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('update() should recalculate booking and preserve original status', async () => {
@@ -276,10 +299,10 @@ describe('AppointmentService', () => {
     appointmentRepo.find.mockResolvedValue([]);
     appointmentRepo.save.mockResolvedValue(saved);
 
-    const result = await service.update('appointment-1', {
+    const result = await service.update('appointment-1', buildUpdateAppointmentDto({
       startTime: '11:00',
       notes: 'Updated note',
-    } as any);
+    }));
 
     expect(appointmentRepo.find).toHaveBeenCalledWith({
       where: expect.objectContaining({
@@ -306,9 +329,9 @@ describe('AppointmentService', () => {
     appointmentRepo.find.mockResolvedValue([]);
     appointmentRepo.save.mockResolvedValue(saved);
 
-    const result = await service.update('appointment-1', {
+    const result = await service.update('appointment-1', buildUpdateAppointmentDto({
       notes: 'Only notes changed',
-    } as any);
+    }));
 
     expect(result.startTime).toBe('09:00');
     expect(result.notes).toBe('Only notes changed');
@@ -364,11 +387,18 @@ describe('AppointmentService', () => {
   });
 
   it('should evaluate status transition helper results', () => {
+    const transitionChecker = service as unknown as {
+      isValidTransition: (
+        currentStatus: AppointmentStatus,
+        newStatus: AppointmentStatus,
+      ) => boolean;
+    };
+
     expect(
-      (service as any).isValidTransition(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+      transitionChecker.isValidTransition(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
     ).toBe(true);
     expect(
-      (service as any).isValidTransition(AppointmentStatus.COMPLETED, AppointmentStatus.PENDING),
+      transitionChecker.isValidTransition(AppointmentStatus.COMPLETED, AppointmentStatus.PENDING),
     ).toBe(false);
   });
 

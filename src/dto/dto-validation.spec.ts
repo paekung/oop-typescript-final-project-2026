@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { validate, ValidationArguments } from 'class-validator';
 import { CancelAppointmentDto } from './appointment/cancel-appointment.dto';
 import { CreateAppointmentDto } from './appointment/create-appointment.dto';
 import { PatchAppointmentDto } from './appointment/patch-appointment.dto';
@@ -154,13 +154,15 @@ describe('DTO validation', () => {
 
   it('EndTimeAfterStartTimeConstraint should expose the default message', () => {
     const constraint = new EndTimeAfterStartTimeConstraint();
+    const validArgs = {
+      object: { startTime: '10:00' },
+    } as ValidationArguments;
+    const invalidArgs = {
+      object: { startTime: '10:00' },
+    } as ValidationArguments;
 
     expect(constraint.defaultMessage()).toBe('endTime must be after startTime');
-    expect(
-      constraint.validate('11:00', { object: { startTime: '10:00' } } as any),
-    ).toBe(true);
-    expect(
-      constraint.validate('09:00', { object: { startTime: '10:00' } } as any),
-    ).toBe(false);
+    expect(constraint.validate('11:00', validArgs)).toBe(true);
+    expect(constraint.validate('09:00', invalidArgs)).toBe(false);
   });
 });
