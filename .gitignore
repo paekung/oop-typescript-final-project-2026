@@ -41,6 +41,7 @@ lerna-debug.log*
 
 # Database
 database.sqlite
+database.json
 
 # Temporary files
 *.tmp

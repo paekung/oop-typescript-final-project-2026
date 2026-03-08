@@ -2,7 +2,7 @@
 
 ## Overview
 
-ระบบ Appointment Booking System ประกอบด้วยข้อมูลหลัก 2 ส่วนคือ `Service` และ `Appointment` โดยใช้ TypeORM ร่วมกับ SQLite ในการจัดเก็บข้อมูล
+ระบบ Appointment Booking System ประกอบด้วยข้อมูลหลัก 2 ส่วนคือ `Service` และ `Appointment` โดยใช้ JSON-based file storage ผ่าน `jsonfile` ในการจัดเก็บข้อมูล
 
 - `Service` ใช้เก็บรายละเอียดของบริการที่ลูกค้าสามารถจองได้
 - `Appointment` ใช้เก็บข้อมูลการนัดหมายที่อ้างอิงถึงบริการ

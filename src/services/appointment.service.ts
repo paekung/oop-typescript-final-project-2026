@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, FindOptionsWhere } from 'typeorm';
+import { randomUUID } from 'crypto';
+import { JsonDatabaseService } from '../database/json-database.service';
 import { AppointmentEntity } from '../entities/appointment.entity';
-import { ServiceEntity } from '../entities/service.entity';
 import { CreateAppointmentDto } from '../dto/appointment/create-appointment.dto';
 import { UpdateAppointmentDto } from '../dto/appointment/update-appointment.dto';
 import { PatchAppointmentDto } from '../dto/appointment/patch-appointment.dto';
@@ -11,12 +10,7 @@ import { DayOfWeek } from '../enums/day-of-week.enum';
 
 @Injectable()
 export class AppointmentService {
-  constructor(
-    @InjectRepository(AppointmentEntity)
-    private readonly appointmentRepo: Repository<AppointmentEntity>,
-    @InjectRepository(ServiceEntity)
-    private readonly serviceRepo: Repository<ServiceEntity>,
-  ) {}
+  constructor(private readonly databaseService: JsonDatabaseService) {}
 
   private addMinutes(time: string, mins: number): string {
     const [h, m] = time.split(':').map(Number);
@@ -41,13 +35,19 @@ export class AppointmentService {
     return validTransitions[currentStatus].includes(newStatus) ?? false;
   }
 
+  private parseLocalDate(dateString: string): Date {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
   private async validateAndCalculateBooking(serviceId: string,appointmentDateStr: string,startTime: string,excludeAppointmentId?: string,):Promise<
   { serviceName: string; endTime: string }> {
-    const service = await this.serviceRepo.findOneBy({ id: serviceId });
+    const data = await this.databaseService.read();
+    const service = data.services.find((item) => item.id === serviceId);
     if (!service) throw new NotFoundException('Service not found');
     if (!service.isActive) throw new BadRequestException('Service is currently inactive');
 
-    const appointmentDate = new Date(appointmentDateStr);
+    const appointmentDate = this.parseLocalDate(appointmentDateStr);
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
     if (appointmentDate < today) throw new BadRequestException('Appointment date cannot be in the past');
@@ -65,17 +65,22 @@ export class AppointmentService {
     const endTime = this.addMinutes(startTime, service.durationMinutes);
     if (endTime > service.endTime) throw new BadRequestException(`Service ends at ${service.endTime}`);
 
-    const whereClause: FindOptionsWhere<AppointmentEntity> = { 
-      serviceId: serviceId, 
-      appointmentDate: appointmentDateStr,
-      status: Not(AppointmentStatus.CANCELLED) 
-    };
-    
-    if (excludeAppointmentId) {
-      whereClause.id = Not(excludeAppointmentId);
-    }
+    const existingAppointments = data.appointments.filter((appointment) => {
+      if (appointment.serviceId !== serviceId) {
+        return false;
+      }
+      if (appointment.appointmentDate !== appointmentDateStr) {
+        return false;
+      }
+      if (appointment.status === AppointmentStatus.CANCELLED) {
+        return false;
+      }
+      if (excludeAppointmentId && appointment.id === excludeAppointmentId) {
+        return false;
+      }
 
-    const existingAppointments = await this.appointmentRepo.find({ where: whereClause });
+      return true;
+    });
 
     let overlapCount = 0;
     for (const existing of existingAppointments) {
@@ -93,39 +98,66 @@ export class AppointmentService {
   }
 
   async createAppointment(dto: CreateAppointmentDto): Promise<AppointmentEntity> {
+    const data = await this.databaseService.read();
     const { serviceName, endTime } = await this.validateAndCalculateBooking(
       dto.serviceId,
       dto.appointmentDate,
       dto.startTime
     );
 
-    const entity = this.appointmentRepo.create({
+    const now = new Date();
+    const entity: AppointmentEntity = {
       ...dto,
+      id: randomUUID(),
       serviceName,
       endTime,
       status: AppointmentStatus.PENDING,
-    });
+      notes: dto.notes ?? '',
+      cancellationReason: null,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    return this.appointmentRepo.save(entity);
+    data.appointments.push(entity);
+    await this.databaseService.write(data);
+
+    return entity;
   }
 
   async findAll(status?: AppointmentStatus, serviceId?: string, date?: string): Promise<AppointmentEntity[]> {
-    const whereClause: FindOptionsWhere<AppointmentEntity> = {};
-    if (status) whereClause.status = status;
-    if (serviceId) whereClause.serviceId = serviceId;
-    if (date) whereClause.appointmentDate = date;
-    
-    return this.appointmentRepo.find({ where: whereClause });
+    const data = await this.databaseService.read();
+
+    return data.appointments.filter((appointment) => {
+      if (status && appointment.status !== status) {
+        return false;
+      }
+      if (serviceId && appointment.serviceId !== serviceId) {
+        return false;
+      }
+      if (date && appointment.appointmentDate !== date) {
+        return false;
+      }
+
+      return true;
+    });
   }
 
   async findById(id: string): Promise<AppointmentEntity> {
-    const appointment = await this.appointmentRepo.findOneBy({ id });
+    const data = await this.databaseService.read();
+    const appointment = data.appointments.find((item) => item.id === id);
     if (!appointment) throw new NotFoundException('Appointment not found');
     return appointment;
   }
 
   async update(id: string, dto: UpdateAppointmentDto): Promise<AppointmentEntity> {
-    const existing = await this.findById(id);
+    const data = await this.databaseService.read();
+    const index = data.appointments.findIndex((appointment) => appointment.id === id);
+
+    if (index === -1) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    const existing = data.appointments[index];
 
     if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(existing.status)) {
       throw new BadRequestException('Cannot modify a finalized appointment');
@@ -144,38 +176,69 @@ export class AppointmentService {
       id
     );
 
-    Object.assign(existing, dto);
-    existing.status = originalStatus;
-    existing.serviceName = serviceName; 
-    existing.endTime = endTime;         
+    const updated: AppointmentEntity = {
+      ...existing,
+      ...dto,
+      status: originalStatus,
+      serviceName,
+      endTime,
+      notes: dto.notes ?? existing.notes,
+      cancellationReason: existing.cancellationReason,
+      updatedAt: new Date(),
+    };
 
-    return this.appointmentRepo.save(existing);
+    data.appointments[index] = updated;
+    await this.databaseService.write(data);
+
+    return updated;
   }
 
   async patch(id: string, dto: PatchAppointmentDto): Promise<AppointmentEntity> {
-    const existing = await this.findById(id);
+    const data = await this.databaseService.read();
+    const index = data.appointments.findIndex((appointment) => appointment.id === id);
+
+    if (index === -1) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    const existing = data.appointments[index];
     
     if ([AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW].includes(existing.status)) {
       throw new BadRequestException('Cannot modify a finalized appointment');
     }
     
+    const updated: AppointmentEntity = {
+      ...existing,
+      updatedAt: new Date(),
+    };
+
     if (dto.status) {
       if (!this.isValidTransition(existing.status, dto.status)) {
         throw new BadRequestException(`Cannot change status from ${existing.status} to ${dto.status}`);
       }
-      existing.status = dto.status;
+      updated.status = dto.status;
     }
     
     if (dto.cancellationReason !== undefined) {
-      existing.cancellationReason = dto.cancellationReason;
+      updated.cancellationReason = dto.cancellationReason;
     }
     
-    return this.appointmentRepo.save(existing);
+    data.appointments[index] = updated;
+    await this.databaseService.write(data);
+
+    return updated;
   }
 
   async remove(id: string): Promise<void> {
-    const existing = await this.findById(id);
-    await this.appointmentRepo.remove(existing);
+    const data = await this.databaseService.read();
+    const exists = data.appointments.some((appointment) => appointment.id === id);
+
+    if (!exists) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    data.appointments = data.appointments.filter((appointment) => appointment.id !== id);
+    await this.databaseService.write(data);
   }
 
   async cancel(id: string, reason: string): Promise<AppointmentEntity> {
