@@ -75,6 +75,22 @@ const buildUpdateAppointmentDto = (
   ...overrides,
 });
 
+const localDayOfWeek = (dateString: string): DayOfWeek => {
+  const [yyyy, mm, dd] = dateString.split('-').map(Number);
+  const date = new Date(yyyy, mm - 1, dd);
+  const dayNames = [
+    DayOfWeek.SUNDAY,
+    DayOfWeek.MONDAY,
+    DayOfWeek.TUESDAY,
+    DayOfWeek.WEDNESDAY,
+    DayOfWeek.THURSDAY,
+    DayOfWeek.FRIDAY,
+    DayOfWeek.SATURDAY,
+  ];
+
+  return dayNames[date.getDay()];
+};
+
 const formatLocalDate = (date: Date): string => {
   const yyyy = date.getFullYear();
   const mm = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -112,7 +128,7 @@ describe('AppointmentService', () => {
     jest.clearAllMocks();
   });
 
-  it('createAppointment() should create a pending appointment with calculated end time', async () => {
+  it('create() should create a pending appointment with calculated end time', async () => {
     const dto = buildCreateAppointmentDto({
       serviceId: 'service-1',
       customerName: 'Jane Doe',
@@ -129,7 +145,7 @@ describe('AppointmentService', () => {
       }),
     );
 
-    const result = await service.createAppointment(dto);
+    const result = await service.create(dto);
 
     expect(result).toMatchObject({
       ...dto,
@@ -141,11 +157,11 @@ describe('AppointmentService', () => {
     expect(databaseService.write).toHaveBeenCalled();
   });
 
-  it('createAppointment() should throw when service is missing', async () => {
+  it('create() should throw when service is missing', async () => {
     databaseService.read.mockResolvedValue(buildDatabase());
 
     await expect(
-      service.createAppointment(buildCreateAppointmentDto({
+      service.create(buildCreateAppointmentDto({
         serviceId: 'missing',
         appointmentDate: '2099-03-10',
         startTime: '09:00',
@@ -153,13 +169,13 @@ describe('AppointmentService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('createAppointment() should reject inactive services', async () => {
+  it('create() should reject inactive services', async () => {
     databaseService.read.mockResolvedValue(
       buildDatabase({ services: [buildService({ isActive: false })] }),
     );
 
     await expect(
-      service.createAppointment(buildCreateAppointmentDto({
+      service.create(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:00',
@@ -167,7 +183,7 @@ describe('AppointmentService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('createAppointment() should reject past dates', async () => {
+  it('create() should reject past dates', async () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
@@ -176,7 +192,7 @@ describe('AppointmentService', () => {
     );
 
     await expect(
-      service.createAppointment(buildCreateAppointmentDto({
+      service.create(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: formatLocalDate(yesterday),
         startTime: '09:00',
@@ -184,26 +200,31 @@ describe('AppointmentService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('createAppointment() should reject unavailable days', async () => {
+  it('create() should reject invalid date values', async () => {
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ services: [buildService()] }),
+    );
+
+    await expect(
+      service.create(buildCreateAppointmentDto({
+        serviceId: 'service-1',
+        appointmentDate: '2099-02-30',
+        startTime: '09:00',
+      })),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('create() should reject unavailable days', async () => {
     const serviceDate = '2099-03-10';
-    const actualDayIndex = new Date(serviceDate).getDay();
-    const dayNames = [
-      DayOfWeek.SUNDAY,
-      DayOfWeek.MONDAY,
-      DayOfWeek.TUESDAY,
-      DayOfWeek.WEDNESDAY,
-      DayOfWeek.THURSDAY,
-      DayOfWeek.FRIDAY,
-      DayOfWeek.SATURDAY,
-    ];
-    const unavailableDays = Object.values(DayOfWeek).filter((day) => day !== dayNames[actualDayIndex]);
+    const requestDay = localDayOfWeek(serviceDate);
+    const unavailableDays = Object.values(DayOfWeek).filter((day) => day !== requestDay);
 
     databaseService.read.mockResolvedValue(
       buildDatabase({ services: [buildService({ availableDays: unavailableDays })] }),
     );
 
     await expect(
-      service.createAppointment(buildCreateAppointmentDto({
+      service.create(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: serviceDate,
         startTime: '09:00',
@@ -211,13 +232,13 @@ describe('AppointmentService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('createAppointment() should reject times before service hours', async () => {
+  it('create() should reject times before service hours', async () => {
     databaseService.read.mockResolvedValue(
       buildDatabase({ services: [buildService({ startTime: '10:00' })] }),
     );
 
     await expect(
-      service.createAppointment(buildCreateAppointmentDto({
+      service.create(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:30',
@@ -225,13 +246,13 @@ describe('AppointmentService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('createAppointment() should reject times after service end', async () => {
+  it('create() should reject times after service end', async () => {
     databaseService.read.mockResolvedValue(
       buildDatabase({ services: [buildService({ endTime: '10:00' })] }),
     );
 
     await expect(
-      service.createAppointment(buildCreateAppointmentDto({
+      service.create(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:30',
@@ -239,7 +260,7 @@ describe('AppointmentService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('createAppointment() should reject fully booked overlapping slots', async () => {
+  it('create() should reject fully booked overlapping slots', async () => {
     databaseService.read.mockResolvedValue(
       buildDatabase({
         services: [buildService({ bufferMinutes: 15, maxConcurrentBookings: 1 })],
@@ -250,7 +271,7 @@ describe('AppointmentService', () => {
     );
 
     await expect(
-      service.createAppointment(buildCreateAppointmentDto({
+      service.create(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '10:05',
@@ -262,7 +283,11 @@ describe('AppointmentService', () => {
     const rows = [buildAppointment()];
     databaseService.read.mockResolvedValue(buildDatabase({ appointments: rows }));
 
-    const result = await service.findAll(AppointmentStatus.PENDING, 'service-1', '2099-03-10');
+    const result = await service.findAll({
+      status: AppointmentStatus.PENDING,
+      serviceId: 'service-1',
+      date: '2099-03-10',
+    });
 
     expect(result).toEqual(rows);
   });
@@ -352,10 +377,10 @@ describe('AppointmentService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('patch() should update valid status transitions and cancellation reason', async () => {
+  it('patch() should update cancelled appointments with a cancellation reason', async () => {
     const existing = buildAppointment({ status: AppointmentStatus.PENDING });
     const saved = buildAppointment({
-      status: AppointmentStatus.CONFIRMED,
+      status: AppointmentStatus.CANCELLED,
       cancellationReason: 'Moved schedule',
     });
     databaseService.read.mockResolvedValue(
@@ -363,12 +388,35 @@ describe('AppointmentService', () => {
     );
 
     const result = await service.patch('appointment-1', {
-      status: AppointmentStatus.CONFIRMED,
+      status: AppointmentStatus.CANCELLED,
       cancellationReason: 'Moved schedule',
     });
 
     expect(result).toMatchObject(saved);
     expect(databaseService.write).toHaveBeenCalled();
+  });
+
+  it('patch() should reject cancelling without a reason', async () => {
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ appointments: [buildAppointment({ status: AppointmentStatus.PENDING })] }),
+    );
+
+    await expect(
+      service.patch('appointment-1', { status: AppointmentStatus.CANCELLED }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('patch() should reject cancellation reason for non-cancelled statuses', async () => {
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ appointments: [buildAppointment({ status: AppointmentStatus.PENDING })] }),
+    );
+
+    await expect(
+      service.patch('appointment-1', {
+        status: AppointmentStatus.CONFIRMED,
+        cancellationReason: 'Not needed anymore',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('patch() should allow valid status transitions without changing cancellation reason', async () => {
@@ -404,13 +452,13 @@ describe('AppointmentService', () => {
     ).toBe(false);
   });
 
-  it('remove() should delete the existing appointment', async () => {
+  it('delete() should delete the existing appointment', async () => {
     const existing = buildAppointment();
     databaseService.read.mockResolvedValue(
       buildDatabase({ appointments: [existing] }),
     );
 
-    await service.remove('appointment-1');
+    await service.delete('appointment-1');
 
     expect(databaseService.write).toHaveBeenCalledWith(
       expect.objectContaining({ appointments: [] }),

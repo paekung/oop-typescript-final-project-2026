@@ -69,15 +69,19 @@ describe('DTO validation', () => {
   it('CreateAppointmentDto should validate a correct payload', async () => {
     const dto = plainToInstance(CreateAppointmentDto, {
       serviceId: '123e4567-e89b-12d3-a456-426614174000',
-      customerName: 'Somchai Jaidee',
-      customerEmail: 'somchai@email.com',
-      customerPhone: '0812345678',
+      customerName: '  Somchai     Jaidee  ',
+      customerEmail: '  SOMCHAI@EMAIL.COM  ',
+      customerPhone: '  +66 81-234-5678  ',
       appointmentDate: '2099-03-10',
       startTime: '09:00',
-      notes: 'Need quiet room',
+      notes: '  Need    quiet room  ',
     });
 
     await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto.customerName).toBe('Somchai Jaidee');
+    expect(dto.customerEmail).toBe('somchai@email.com');
+    expect(dto.customerPhone).toBe('0812345678');
+    expect(dto.notes).toBe('Need quiet room');
   });
 
   it('CreateServiceDto should keep invalid non-string availableDays values for validator errors', async () => {
@@ -106,12 +110,12 @@ describe('DTO validation', () => {
     );
   });
 
-  it('CreateAppointmentDto should reject invalid phone and time', async () => {
+  it('CreateAppointmentDto should reject invalid name, phone, email and time', async () => {
     const dto = plainToInstance(CreateAppointmentDto, {
       serviceId: 'not-a-uuid',
-      customerName: 'Somchai Jaidee',
+      customerName: 'John 123',
       customerEmail: 'invalid-email',
-      customerPhone: '12345',
+      customerPhone: '0212345678',
       appointmentDate: '03/10/2099',
       startTime: '9:00',
     });
@@ -120,25 +124,47 @@ describe('DTO validation', () => {
     const messages = errors.flatMap((error) => Object.values(error.constraints ?? {}));
 
     expect(messages).toContain('serviceId must be a UUID');
-    expect(messages).toContain('customerEmail must be an email');
-    expect(messages).toContain('customerPhone must be a valid Thai phone number (e.g., 0812345678)');
+    expect(messages).toContain('customerName must contain only letters, spaces, apostrophes, dots, or hyphens');
+    expect(messages).toContain('customerEmail must be a valid email address');
+    expect(messages).toContain('customerPhone must be a valid Thai mobile number (e.g., 0812345678)');
     expect(messages).toContain('AppointmentDate must be in YYYY-MM-DD');
     expect(messages).toContain('startTime must be in HH:mm format (00:00 - 23:59)');
+  });
+
+  it('CreateAppointmentDto should reject whitespace-only names after normalization', async () => {
+    const dto = plainToInstance(CreateAppointmentDto, {
+      serviceId: '123e4567-e89b-12d3-a456-426614174000',
+      customerName: '          ',
+      customerEmail: 'valid@email.com',
+      customerPhone: '0812345678',
+      appointmentDate: '2099-03-10',
+      startTime: '09:00',
+    });
+
+    const errors = await validate(dto);
+    const customerNameError = errors.find((error) => error.property === 'customerName');
+
+    expect(customerNameError?.constraints).toEqual(
+      expect.objectContaining({
+        isNotEmpty: 'customerName must not be empty or whitespace only',
+      }),
+    );
   });
 
   it('PatchAppointmentDto and CancelAppointmentDto should validate optional and required fields', async () => {
     const patchDto = plainToInstance(PatchAppointmentDto, {
       status: AppointmentStatus.CONFIRMED,
-      cancellationReason: 'Need to reschedule',
+      cancellationReason: '  Need   to reschedule  ',
     });
     const cancelDto = plainToInstance(CancelAppointmentDto, {
-      cancellationReason: '',
+      cancellationReason: '   ',
     });
 
     const patchErrors = await validate(patchDto);
     const cancelErrors = await validate(cancelDto);
 
     expect(patchErrors).toHaveLength(0);
+    expect(patchDto.cancellationReason).toBe('Need to reschedule');
     expect(cancelErrors[0].constraints).toEqual(
       expect.objectContaining({
         isNotEmpty: 'Cancellation reason is required',

@@ -29,10 +29,10 @@ describe('AppointmentController', () => {
   const appointmentService = {
     findAll: jest.fn(),
     findById: jest.fn(),
-    createAppointment: jest.fn(),
+    create: jest.fn(),
     update: jest.fn(),
     patch: jest.fn(),
-    remove: jest.fn(),
+    delete: jest.fn(),
     cancel: jest.fn(),
     confirm: jest.fn(),
   };
@@ -58,11 +58,11 @@ describe('AppointmentController', () => {
 
     const result = await controller.findAll(AppointmentStatus.PENDING, 'service-1', '2099-03-10');
 
-    expect(appointmentService.findAll).toHaveBeenCalledWith(
-      AppointmentStatus.PENDING,
-      'service-1',
-      '2099-03-10',
-    );
+    expect(appointmentService.findAll).toHaveBeenCalledWith({
+      status: AppointmentStatus.PENDING,
+      serviceId: 'service-1',
+      date: '2099-03-10',
+    });
     expect(result).toEqual({
       success: true,
       message: 'Appointments retrieved successfully',
@@ -84,7 +84,7 @@ describe('AppointmentController', () => {
   it('create() should return wrapped created appointment', async () => {
     const dto = buildCreateAppointmentDto({ serviceId: 'service-1' });
     const data = { id: 'appointment-1', ...dto };
-    appointmentService.createAppointment.mockResolvedValue(data);
+    appointmentService.create.mockResolvedValue(data);
 
     await expect(controller.create(dto)).resolves.toEqual({
       success: true,
@@ -116,7 +116,7 @@ describe('AppointmentController', () => {
   });
 
   it('remove() should return wrapped delete result', async () => {
-    appointmentService.remove.mockResolvedValue(undefined);
+    appointmentService.delete.mockResolvedValue(undefined);
 
     await expect(controller.remove('appointment-1')).resolves.toEqual({
       success: true,

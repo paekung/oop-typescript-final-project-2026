@@ -25,7 +25,7 @@ export class AppointmentController {
     @Query('serviceId') serviceId?: string,
     @Query('date') date?: string,
   ): Promise<CustomApiResponse<AppointmentEntity[]>> {
-    const data = await this.appointmentService.findAll(status, serviceId, date);
+    const data = await this.appointmentService.findAll({ status, serviceId, date });
     return { success: true, message: 'Appointments retrieved successfully', data };
   }
 
@@ -48,7 +48,7 @@ export class AppointmentController {
   @ApiResponse({ status: 404, description: 'Service not found' })
   @ApiResponse({ status: 409, description: 'Time slot conflict' })
   async create(@Body() dto: CreateAppointmentDto): Promise<CustomApiResponse<AppointmentEntity>> {
-    const data = await this.appointmentService.createAppointment(dto);
+    const data = await this.appointmentService.create(dto);
     return { success: true, message: 'Appointment created successfully', data };
   }
 
@@ -83,7 +83,7 @@ export class AppointmentController {
   @ApiResponse({ status: 200, description: 'Appointment deleted successfully' })
   @ApiResponse({ status: 404, description: 'Appointment not found' })
   async remove(@Param('id') id: string): Promise<CustomApiResponse<null>> {
-    await this.appointmentService.remove(id);
+    await this.appointmentService.delete(id);
     return { success: true, message: 'Appointment deleted successfully', data: null };
   }
 
