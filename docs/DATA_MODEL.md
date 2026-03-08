@@ -12,46 +12,48 @@
 
 ## Service Entity
 
-| Field | Type | Description |
-|------|------|-------------|
-| `id` | `string` | UUID ของบริการ |
-| `name` | `string` | ชื่อบริการ |
-| `description` | `string` | รายละเอียดบริการ |
-| `category` | `ServiceCategory` | หมวดหมู่ของบริการ |
-| `durationMinutes` | `number` | ระยะเวลาของบริการเป็นนาที |
-| `price` | `number` | ราคาของบริการ |
-| `providerName` | `string` | ชื่อผู้ให้บริการ |
-| `availableDays` | `DayOfWeek[]` | วันที่เปิดให้บริการ |
-| `startTime` | `string` | เวลาเริ่มให้บริการรูปแบบ `HH:mm` |
-| `endTime` | `string` | เวลาสิ้นสุดการให้บริการรูปแบบ `HH:mm` |
-| `maxConcurrentBookings` | `number` | จำนวนการจองพร้อมกันสูงสุด |
-| `bufferMinutes` | `number` | เวลาพักระหว่างการจอง |
-| `isActive` | `boolean` | สถานะเปิดใช้งานบริการ |
-| `createdAt` | `Date` | วันที่สร้างข้อมูล |
-| `updatedAt` | `Date` | วันที่แก้ไขข้อมูลล่าสุด |
+เก็บข้อมูลบริการที่เปิดให้จองนัดหมาย มีทั้งหมด 14 attributes
+
+| Field | Type | Constraint | Description |
+|------|------|------------|-------------|
+| `id` | `string` (UUID) | PK, auto-generated | รหัสบริการ |
+| `name` | `string` | max 200 chars, required | ชื่อบริการ |
+| `description` | `string` | required | รายละเอียดบริการ |
+| `category` | `ServiceCategory` | enum, required | หมวดหมู่ของบริการ |
+| `durationMinutes` | `number` | integer, 1–1440 | ระยะเวลาของบริการเป็นนาที |
+| `price` | `number` | decimal, >= 0 | ราคาของบริการ |
+| `providerName` | `string` | required | ชื่อผู้ให้บริการ |
+| `availableDays` | `DayOfWeek[]` | array, min 1 item | วันที่เปิดให้บริการ |
+| `startTime` | `string` | format HH:mm | เวลาเริ่มให้บริการ |
+| `endTime` | `string` | format HH:mm, > startTime | เวลาสิ้นสุดการให้บริการ |
+| `maxConcurrentBookings` | `number` | integer, >= 1 | จำนวนการจองพร้อมกันสูงสุด |
+| `bufferMinutes` | `number` | integer, >= 0 | เวลาพักระหว่างการจอง (นาที) |
+| `isActive` | `boolean` | default: true | สถานะเปิดใช้งานบริการ |
+| `createdAt` | `Date` | auto-generated | วันที่สร้างข้อมูล |
+| `updatedAt` | `Date` | auto-updated | วันที่แก้ไขข้อมูลล่าสุด |
 
 ---
 
 ## Appointment Entity
 
-| Field | Type | Description |
-|------|------|-------------|
-| `id` | `string` | UUID ของนัดหมาย |
-| `serviceId` | `string` | อ้างอิงบริการที่ถูกจอง |
-| `serviceName` | `string` | ชื่อบริการที่ถูกบันทึกไว้ในนัดหมาย |
-| `customerName` | `string` | ชื่อลูกค้า |
-| `customerEmail` | `string` | อีเมลลูกค้า |
-| `customerPhone` | `string` | เบอร์โทรลูกค้า |
-| `appointmentDate` | `string` | วันที่นัดหมายรูปแบบ `YYYY-MM-DD` |
-| `startTime` | `string` | เวลาเริ่มต้นรูปแบบ `HH:mm` |
-| `endTime` | `string` | เวลาสิ้นสุดรูปแบบ `HH:mm` |
-| `status` | `AppointmentStatus` | สถานะของการนัดหมาย |
-| `notes` | `string` | หมายเหตุเพิ่มเติมจากลูกค้า |
-| `cancellationReason` | `string \| null` | เหตุผลในการยกเลิก |
-| `createdAt` | `Date` | วันที่สร้างข้อมูล |
-| `updatedAt` | `Date` | วันที่แก้ไขข้อมูลล่าสุด |
+เก็บข้อมูลการนัดหมายของลูกค้า มีทั้งหมด 13 attributes
 
-> หมายเหตุ: ฝั่ง `Appointment` จะถูกเติม implementation และ entity file โดยผู้รับผิดชอบของโมดูลนี้
+| Field | Type | Constraint | Description |
+|------|------|------------|-------------|
+| `id` | `string` (UUID) | PK, auto-generated | รหัสนัดหมาย |
+| `serviceId` | `string` (UUID) | FK → Service.id, required | อ้างอิงบริการที่ถูกจอง |
+| `serviceName` | `string` | required | ชื่อบริการ (denormalized cache) |
+| `customerName` | `string` | required | ชื่อลูกค้า |
+| `customerEmail` | `string` | valid email, required | อีเมลลูกค้า |
+| `customerPhone` | `string` | Thai phone format, required | เบอร์โทรลูกค้า |
+| `appointmentDate` | `string` | format YYYY-MM-DD, required | วันที่นัดหมาย |
+| `startTime` | `string` | format HH:mm, required | เวลาเริ่มต้น |
+| `endTime` | `string` | format HH:mm, auto-computed | เวลาสิ้นสุด (คำนวณจาก durationMinutes) |
+| `status` | `AppointmentStatus` | enum, default: PENDING | สถานะของการนัดหมาย |
+| `notes` | `string` | optional | หมายเหตุเพิ่มเติมจากลูกค้า |
+| `cancellationReason` | `string \| null` | required when cancelling | เหตุผลในการยกเลิก |
+| `createdAt` | `Date` | auto-generated | วันที่สร้างข้อมูล |
+| `updatedAt` | `Date` | auto-updated | วันที่แก้ไขข้อมูลล่าสุด |
 
 ---
 
@@ -59,46 +61,84 @@
 
 ### ServiceCategory
 
-- `HEALTH`
-- `BEAUTY`
-- `CONSULTING`
-- `EDUCATION`
-- `FITNESS`
-- `OTHER`
+หมวดหมู่ของบริการ
+
+| Value | Description |
+|-------|-------------|
+| `HEALTH` | บริการด้านสุขภาพ |
+| `BEAUTY` | บริการด้านความงาม |
+| `CONSULTING` | บริการที่ปรึกษา |
+| `EDUCATION` | บริการด้านการศึกษา |
+| `FITNESS` | บริการด้านฟิตเนส |
+| `OTHER` | บริการอื่น ๆ |
 
 ### DayOfWeek
 
-- `MONDAY`
-- `TUESDAY`
-- `WEDNESDAY`
-- `THURSDAY`
-- `FRIDAY`
-- `SATURDAY`
-- `SUNDAY`
+วันในสัปดาห์ ใช้กำหนดวันที่ Service เปิดให้บริการ
+
+| Value | Description |
+|-------|-------------|
+| `MONDAY` | วันจันทร์ |
+| `TUESDAY` | วันอังคาร |
+| `WEDNESDAY` | วันพุธ |
+| `THURSDAY` | วันพฤหัสบดี |
+| `FRIDAY` | วันศุกร์ |
+| `SATURDAY` | วันเสาร์ |
+| `SUNDAY` | วันอาทิตย์ |
 
 ### AppointmentStatus
 
-- `PENDING`
-- `CONFIRMED`
-- `COMPLETED`
-- `CANCELLED`
-- `NO_SHOW`
+สถานะของการนัดหมาย ใช้ควบคุม workflow ของ Appointment
+
+| Value | Description | Terminal State |
+|-------|-------------|---------------|
+| `PENDING` | รอดำเนินการ (ค่าเริ่มต้น) | ไม่ |
+| `CONFIRMED` | ยืนยันแล้ว | ไม่ |
+| `COMPLETED` | เสร็จสิ้น | ใช่ |
+| `CANCELLED` | ยกเลิก | ใช่ |
+| `NO_SHOW` | ไม่มาตามนัด | ใช่ |
+
+> หมายเหตุ: Appointment ที่อยู่ใน Terminal State (`COMPLETED`, `CANCELLED`, `NO_SHOW`) จะไม่สามารถแก้ไขได้อีก
 
 ---
 
 ## Relationships
 
-- 1 `Service` : many `Appointment`
+```
+Service (1) ────────── (*) Appointment
+        OneToMany            ManyToOne
+```
+
+- 1 `Service` สามารถมีได้หลาย `Appointment`
 - `Appointment.serviceId` เป็น foreign key ที่อ้างถึง `Service.id`
-- `Appointment.serviceName` เป็นข้อมูลแบบ denormalized เพื่อความสะดวกในการแสดงผล
+- `Appointment.serviceName` เป็นข้อมูลแบบ denormalized เพื่อความสะดวกในการแสดงผล โดยคัดลอกมาจาก `Service.name` ตอนสร้าง Appointment
 
 ---
 
 ## Business Rules Summary
 
-- บริการที่ถูกปิดใช้งาน (`isActive = false`) จะไม่สามารถจองใหม่ได้
-- วันที่นัดหมายต้องไม่เป็นอดีต
-- เวลานัดหมายต้องอยู่ภายในช่วงเวลาเปิดให้บริการของ `Service`
-- ระบบต้องตรวจสอบ time slot conflict ก่อนสร้างหรือแก้ไข `Appointment`
-- การยกเลิกนัดหมายต้องมี `cancellationReason`
-- ไม่สามารถแก้ไขนัดหมายที่อยู่ในสถานะสิ้นสุดแล้ว เช่น `COMPLETED`, `CANCELLED`, `NO_SHOW`
+### การสร้างนัดหมาย (POST /appointments)
+
+- จองได้เฉพาะบริการที่มีสถานะ `isActive: true` เท่านั้น
+- วันที่นัดหมายต้องไม่เป็นวันในอดีต
+- วันนัดหมายต้องอยู่ใน `availableDays` ของ Service
+- เวลานัดหมายต้องอยู่ภายในช่วง `startTime` - `endTime` ของ Service
+- ระบบคำนวณ `endTime` ของ Appointment อัตโนมัติจาก `durationMinutes` ของ Service
+- ตรวจสอบ time slot conflict — หาก slot เต็มตาม `maxConcurrentBookings` จะตอบ `409 Conflict`
+
+### การแก้ไขนัดหมาย (PUT/PATCH /appointments/:id)
+
+- ไม่อนุญาตให้แก้ไขนัดหมายที่อยู่ใน Terminal State
+- การแก้ไขเวลาต้องผ่านการตรวจสอบ conflict เช่นเดียวกับการสร้าง
+
+### การยกเลิกนัดหมาย (PATCH /appointments/:id/cancel)
+
+- ต้องระบุ `cancellationReason` ทุกครั้ง
+
+### การลบบริการ (DELETE /services/:id)
+
+- ไม่สามารถลบ Service ที่มี Appointment ในสถานะ `PENDING` หรือ `CONFIRMED` อยู่
+
+### Available Slots (GET /services/:id/available-slots)
+
+- คำนวณช่วงเวลาว่างโดยอ้างอิงจากเวลาเปิด-ปิด, ระยะเวลา (`durationMinutes`), buffer และนัดหมายที่จองแล้ว
