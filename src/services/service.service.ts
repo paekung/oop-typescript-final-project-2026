@@ -64,6 +64,7 @@ export class ServiceService {
       throw new BadRequestException('Cannot delete service with active appointments');
     }
 
+    await this.appointmentRepo.delete({ serviceId: id });
     await this.serviceRepo.delete(id);
   }
 
