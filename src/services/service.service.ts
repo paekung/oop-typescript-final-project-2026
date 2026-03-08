@@ -70,6 +70,10 @@ export class ServiceService {
       appointments: current.appointments,
     };
 
+    if (this.timeToMins(updated.endTime) <= this.timeToMins(updated.startTime)) {
+      throw new BadRequestException('endTime must be after startTime');
+    }
+
     data.services[index] = updated;
     await this.databaseService.write(data);
 
@@ -85,6 +89,10 @@ export class ServiceService {
       ...dto,
       updatedAt: new Date(),
     };
+
+    if (this.timeToMins(updated.endTime) <= this.timeToMins(updated.startTime)) {
+      throw new BadRequestException('endTime must be after startTime');
+    }
 
     data.services[index] = updated;
     await this.databaseService.write(data);
@@ -135,6 +143,16 @@ export class ServiceService {
       throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
     }
 
+    if (date.getFullYear() !== yyyy || date.getMonth() !== mm - 1 || date.getDate() !== dd) {
+      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD');
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) {
+      throw new BadRequestException('Date cannot be in the past');
+    }
+
     const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const requestDay = dayNames[date.getDay()] as DayOfWeek;
     
@@ -166,20 +184,29 @@ export class ServiceService {
 
     // 4 & 5. กรองเวลาที่ไม่ว่างออก (ตรวจจับ Overlap)
     return slots.filter(slotTime => {
+      // กรอง slot ที่ผ่านไปแล้วออก ถ้าวันที่ที่ขอเป็นวันนี้
+      if (date.getTime() === today.getTime()) {
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        if (this.timeToMins(slotTime) <= currentMins) {
+          return false;
+        }
+      }
+
       const slotStart = this.timeToMins(slotTime);
       const slotEnd = slotStart + service.durationMinutes;
-      
+
       let overlaps = 0;
       for (const app of existingApps) {
         const appStart = this.timeToMins(app.startTime);
-        const appEnd = this.timeToMins(app.endTime);
-        
+        const appEnd = this.timeToMins(app.endTime) + service.bufferMinutes;
+
         // กฎการเช็ก Overlap: เวลาเริ่มใหม่ต้องน้อยกว่าเวลาจบเดิม AND เวลาจบใหม่ต้องมากกว่าเวลาเริ่มเดิม
         if (slotStart < appEnd && slotEnd > appStart) {
           overlaps++;
         }
       }
-      
+
       // จะคืนค่าเฉพาะช่วงเวลาที่คนจองยังไม่เต็ม maxConcurrentBookings
       return overlaps < service.maxConcurrentBookings;
     });

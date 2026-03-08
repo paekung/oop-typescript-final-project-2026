@@ -136,6 +136,14 @@ export class AppointmentService {
       throw new BadRequestException('Appointment date cannot be in the past');
     }
 
+    if (parsedAppointmentDate.getTime() === today.getTime()) {
+      const now = new Date();
+      const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+      if (this.timeToMinutes(startTime) <= currentTimeMinutes) {
+        throw new BadRequestException('Appointment time cannot be in the past');
+      }
+    }
+
     const dayName = this.getDayOfWeek(parsedAppointmentDate);
     if (!service.availableDays.includes(dayName)) {
       throw new BadRequestException(`Service is not available on ${dayName}`);
