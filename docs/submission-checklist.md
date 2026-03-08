@@ -7,7 +7,7 @@
 - [x] `package.json` มี `contributors` ครบ 3 คน
 - [x] `package.json` มี `project.model.id` เป็น `6`
 - [x] `package.json` มี `project.model.name` เป็น `Appointment Booking System`
-- [x] dependency ที่จำเป็นสำหรับ NestJS + TypeORM + SQLite ถูกระบุครบ
+- [x] dependency ที่จำเป็นสำหรับ NestJS + JSON DB ถูกระบุครบ
 
 ## Shared Infrastructure
 
@@ -16,7 +16,7 @@
 - [x] [src/main.ts](../src/main.ts) register global validation pipe แล้ว
 - [x] [src/main.ts](../src/main.ts) register global exception filter แล้ว
 - [x] Swagger config ใน [src/main.ts](../src/main.ts) เป็นชื่อโปรเจคจริง
-- [x] [.gitignore](../.gitignore) ignore `database.sqlite` แล้ว
+- [x] [.gitignore](../.gitignore) ignore `database.json` แล้ว
 
 ## Service Module
 
@@ -34,12 +34,12 @@
 - [x] มี logic ตรวจ time slot conflict
 - [x] มี logic ตรวจ status transition
 
-## TypeORM Integration
+## JSON Database Integration
 
-- [x] [src/app.module.ts](../src/app.module.ts) ตั้งค่า `TypeOrmModule.forRoot()` แล้ว
-- [x] ใช้ `better-sqlite3`
-- [x] `database.sqlite` ถูกสร้างได้อัตโนมัติ
-- [x] register entities, controllers และ providers ครบ
+- [x] [src/database/json-database.service.ts](../src/database/json-database.service.ts) ตั้งค่า JSON file persistence แล้ว
+- [x] ใช้ `jsonfile`
+- [x] `database.json` ถูกสร้างได้อัตโนมัติ
+- [x] register controllers และ providers ครบ
 
 ## API Contract
 

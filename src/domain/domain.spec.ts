@@ -3,7 +3,6 @@ import { ServiceEntity } from '../entities/service.entity';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
 import { DayOfWeek } from '../enums/day-of-week.enum';
 import { ServiceCategory } from '../enums/service-category.enum';
-import { getMetadataArgsStorage } from 'typeorm';
 
 describe('Domain models', () => {
   it('should allow assigning service entity properties', () => {
@@ -59,16 +58,16 @@ describe('Domain models', () => {
     expect(ServiceCategory.OTHER).toBe('OTHER');
   });
 
-  it('should expose the price transformer metadata', () => {
-    const priceColumn = getMetadataArgsStorage().columns.find(
-      (column) => column.target === ServiceEntity && column.propertyName === 'price',
-    );
-    const transformer = priceColumn?.options.transformer as {
-      to: (value: number) => number;
-      from: (value: string) => number;
-    };
+  it('should support optional relation references in plain models', () => {
+    const service = new ServiceEntity();
+    service.id = 'service-1';
+    service.name = 'Therapy';
 
-    expect(transformer.to(250.5)).toBe(250.5);
-    expect(transformer.from('250.50')).toBe(250.5);
+    const appointment = new AppointmentEntity();
+    appointment.id = 'appointment-1';
+    appointment.serviceId = 'service-1';
+    appointment.service = service;
+
+    expect(appointment.service?.name).toBe('Therapy');
   });
 });

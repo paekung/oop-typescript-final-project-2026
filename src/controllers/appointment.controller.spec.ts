@@ -1,7 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CreateAppointmentDto } from '../dto/appointment/create-appointment.dto';
+import { UpdateAppointmentDto } from '../dto/appointment/update-appointment.dto';
 import { AppointmentController } from './appointment.controller';
 import { AppointmentService } from '../services/appointment.service';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
+
+const buildCreateAppointmentDto = (
+  overrides: Partial<CreateAppointmentDto> = {},
+): CreateAppointmentDto => ({
+  serviceId: '123e4567-e89b-12d3-a456-426614174000',
+  customerName: 'Jane Doe',
+  customerEmail: 'jane@example.com',
+  customerPhone: '0812345678',
+  appointmentDate: '2099-03-10',
+  startTime: '09:00',
+  notes: '',
+  ...overrides,
+});
+
+const buildUpdateAppointmentDto = (
+  overrides: Partial<UpdateAppointmentDto> = {},
+): UpdateAppointmentDto => ({
+  ...overrides,
+});
 
 describe('AppointmentController', () => {
   let controller: AppointmentController;
@@ -61,11 +82,11 @@ describe('AppointmentController', () => {
   });
 
   it('create() should return wrapped created appointment', async () => {
-    const dto = { serviceId: 'service-1' };
+    const dto = buildCreateAppointmentDto({ serviceId: 'service-1' });
     const data = { id: 'appointment-1', ...dto };
     appointmentService.createAppointment.mockResolvedValue(data);
 
-    await expect(controller.create(dto as any)).resolves.toEqual({
+    await expect(controller.create(dto)).resolves.toEqual({
       success: true,
       message: 'Appointment created successfully',
       data,
@@ -76,7 +97,7 @@ describe('AppointmentController', () => {
     const data = { id: 'appointment-1', notes: 'Updated' };
     appointmentService.update.mockResolvedValue(data);
 
-    await expect(controller.update('appointment-1', { notes: 'Updated' } as any)).resolves.toEqual({
+    await expect(controller.update('appointment-1', buildUpdateAppointmentDto({ notes: 'Updated' }))).resolves.toEqual({
       success: true,
       message: 'Appointment updated successfully',
       data,

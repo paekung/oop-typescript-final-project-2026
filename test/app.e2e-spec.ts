@@ -1,11 +1,8 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
-import { Repository } from 'typeorm';
 import { AppModule } from './../src/app.module';
-import { AppointmentEntity } from './../src/entities/appointment.entity';
-import { ServiceEntity } from './../src/entities/service.entity';
+import { JsonDatabaseService } from './../src/database/json-database.service';
 import { HttpExceptionFilter } from './../src/filters/http-exception.filter';
 
 const formatDate = (date: Date): string => {
@@ -23,8 +20,7 @@ const getFutureDate = (daysAhead = 7): string => {
 
 describe('Appointment Booking API (e2e)', () => {
   let app: INestApplication;
-  let serviceRepo: Repository<ServiceEntity>;
-  let appointmentRepo: Repository<AppointmentEntity>;
+  let databaseService: JsonDatabaseService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,17 +39,11 @@ describe('Appointment Booking API (e2e)', () => {
 
     await app.init();
 
-    serviceRepo = moduleFixture.get<Repository<ServiceEntity>>(
-      getRepositoryToken(ServiceEntity),
-    );
-    appointmentRepo = moduleFixture.get<Repository<AppointmentEntity>>(
-      getRepositoryToken(AppointmentEntity),
-    );
+    databaseService = moduleFixture.get(JsonDatabaseService);
   });
 
   beforeEach(async () => {
-    await appointmentRepo.clear();
-    await serviceRepo.clear();
+    await databaseService.reset();
   });
 
   afterAll(async () => {

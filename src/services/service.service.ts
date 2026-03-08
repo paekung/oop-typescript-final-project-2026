@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, FindOptionsWhere } from 'typeorm';
+import { randomUUID } from 'crypto';
+import { JsonDatabaseService } from '../database/json-database.service';
 import { ServiceEntity } from '../entities/service.entity';
-import { AppointmentEntity } from '../entities/appointment.entity';
 import { CreateServiceDto } from '../dto/service/create-service.dto';
 import { UpdateServiceDto } from '../dto/service/update-service.dto';
 import { PatchServiceDto } from '../dto/service/patch-service.dto';
@@ -12,60 +11,109 @@ import { ServiceCategory } from '../enums/service-category.enum';
 
 @Injectable()
 export class ServiceService {
-  constructor(
-    @InjectRepository(ServiceEntity)
-    private readonly serviceRepo: Repository<ServiceEntity>,
-    @InjectRepository(AppointmentEntity)
-    private readonly appointmentRepo: Repository<AppointmentEntity>,
-  ) {}
+  constructor(private readonly databaseService: JsonDatabaseService) {}
 
   async findAll(filter: { category?: ServiceCategory; isActive?: boolean } = {}): Promise<ServiceEntity[]> {
-    const where: FindOptionsWhere<ServiceEntity> = {};
-    if (filter.category) where.category = filter.category;
-    if (filter.isActive !== undefined) where.isActive = filter.isActive;
-    return this.serviceRepo.find({ where });
+    const data = await this.databaseService.read();
+
+    return data.services.filter((service) => {
+      if (filter.category && service.category !== filter.category) {
+        return false;
+      }
+      if (filter.isActive !== undefined && service.isActive !== filter.isActive) {
+        return false;
+      }
+
+      return true;
+    });
   }
 
   async findById(id: string): Promise<ServiceEntity> {
-    const service = await this.serviceRepo.findOneBy({ id });
+    const data = await this.databaseService.read();
+    const service = data.services.find((item) => item.id === id);
     if (!service) throw new NotFoundException('Service not found');
     return service;
   }
 
   async create(dto: CreateServiceDto): Promise<ServiceEntity> {
-    const entity = this.serviceRepo.create(dto);
-    return this.serviceRepo.save(entity);
+    const data = await this.databaseService.read();
+    const now = new Date();
+    const entity: ServiceEntity = {
+      ...dto,
+      id: randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+      appointments: [],
+    };
+
+    data.services.push(entity);
+    await this.databaseService.write(data);
+
+    return entity;
   }
 
   async update(id: string, dto: UpdateServiceDto): Promise<ServiceEntity> {
-    const service = await this.findById(id);//ตรวจสอบว่ามี Service อยู่จริงมั้ย
-    const updated = this.serviceRepo.merge(service, dto);
-    return this.serviceRepo.save(updated);
+    const data = await this.databaseService.read();
+    const index = data.services.findIndex((service) => service.id === id);
+
+    if (index === -1) {
+      throw new NotFoundException('Service not found');
+    }
+
+    const current = data.services[index];
+    const updated: ServiceEntity = {
+      ...current,
+      ...dto,
+      id: current.id,
+      createdAt: current.createdAt,
+      updatedAt: new Date(),
+      appointments: current.appointments,
+    };
+
+    data.services[index] = updated;
+    await this.databaseService.write(data);
+
+    return updated;
   }
 
   async patch(id: string, dto: PatchServiceDto): Promise<ServiceEntity> {
-    const service = await this.findById(id);
-    const updated = this.serviceRepo.merge(service, dto);
-    return this.serviceRepo.save(updated);
+    const existing = await this.findById(id);
+    const data = await this.databaseService.read();
+    const index = data.services.findIndex((service) => service.id === id);
+    const updated: ServiceEntity = {
+      ...existing,
+      ...dto,
+      updatedAt: new Date(),
+    };
+
+    data.services[index] = updated;
+    await this.databaseService.write(data);
+
+    return updated;
   }
 
   async delete(id: string): Promise<void> {
-    await this.findById(id); //ตรวจสอบว่ามี Service อยู่จริงมั้ย
-    
-    // Check for active appointments before deleting
-    const activeAppointments = await this.appointmentRepo.find({
-      where: [
-        { serviceId: id, status: AppointmentStatus.PENDING },
-        { serviceId: id, status: AppointmentStatus.CONFIRMED }
-      ]
-    });
+    const data = await this.databaseService.read();
+    const serviceExists = data.services.some((service) => service.id === id);
+
+    if (!serviceExists) {
+      throw new NotFoundException('Service not found');
+    }
+
+    const activeAppointments = data.appointments.filter(
+      (appointment) =>
+        appointment.serviceId === id &&
+        [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED].includes(appointment.status),
+    );
 
     if (activeAppointments.length > 0) {
       throw new BadRequestException('Cannot delete service with active appointments');
     }
 
-    await this.appointmentRepo.delete({ serviceId: id });
-    await this.serviceRepo.delete(id);
+    data.appointments = data.appointments.filter((appointment) => appointment.serviceId !== id);
+    data.services = data.services.filter((service) => service.id !== id);
+
+    await this.databaseService.write(data);
   }
 
   async getAvailableSlots(serviceId: string, dateString: string): Promise<string[]> {
@@ -108,13 +156,13 @@ export class ServiceService {
     }
 
     // 3. ดึงคิวการจองที่มีอยู่แล้วในวันนั้น (ที่ไม่ใช่สถานะ CANCELLED)
-    const existingApps = await this.appointmentRepo.find({
-      where: { 
-        serviceId: serviceId, 
-        appointmentDate: dateString,
-        status: Not(AppointmentStatus.CANCELLED) 
-      }
-    });
+    const data = await this.databaseService.read();
+    const existingApps = data.appointments.filter(
+      (appointment) =>
+        appointment.serviceId === serviceId &&
+        appointment.appointmentDate === dateString &&
+        appointment.status !== AppointmentStatus.CANCELLED,
+    );
 
     // 4 & 5. กรองเวลาที่ไม่ว่างออก (ตรวจจับ Overlap)
     return slots.filter(slotTime => {

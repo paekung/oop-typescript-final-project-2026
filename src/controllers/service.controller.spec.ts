@@ -1,7 +1,45 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CreateServiceDto } from '../dto/service/create-service.dto';
+import { UpdateServiceDto } from '../dto/service/update-service.dto';
 import { ServiceController } from './service.controller';
 import { ServiceService } from '../services/service.service';
 import { ServiceCategory } from '../enums/service-category.enum';
+
+const buildCreateServiceDto = (
+  overrides: Partial<CreateServiceDto> = {},
+): CreateServiceDto => ({
+  name: 'Massage',
+  description: 'Relaxing massage',
+  category: ServiceCategory.BEAUTY,
+  durationMinutes: 60,
+  price: 499,
+  providerName: 'Salon A',
+  availableDays: [],
+  startTime: '09:00',
+  endTime: '18:00',
+  maxConcurrentBookings: 1,
+  bufferMinutes: 0,
+  isActive: true,
+  ...overrides,
+});
+
+const buildUpdateServiceDto = (
+  overrides: Partial<UpdateServiceDto> = {},
+): UpdateServiceDto => ({
+  name: 'Massage',
+  description: 'Relaxing massage',
+  category: ServiceCategory.BEAUTY,
+  durationMinutes: 60,
+  price: 499,
+  providerName: 'Salon A',
+  availableDays: [],
+  startTime: '09:00',
+  endTime: '18:00',
+  maxConcurrentBookings: 1,
+  bufferMinutes: 0,
+  isActive: true,
+  ...overrides,
+});
 
 describe('ServiceController', () => {
   let controller: ServiceController;
@@ -59,11 +97,11 @@ describe('ServiceController', () => {
   });
 
   it('create() should wrap the created service', async () => {
-    const dto = { name: 'Massage' };
+    const dto = buildCreateServiceDto();
     const data = { id: 'service-1', ...dto };
     serviceService.create.mockResolvedValue(data);
 
-    await expect(controller.create(dto as any)).resolves.toEqual({
+    await expect(controller.create(dto)).resolves.toEqual({
       success: true,
       message: 'Service created successfully',
       data,
@@ -74,7 +112,7 @@ describe('ServiceController', () => {
     const data = { id: 'service-1', name: 'Updated' };
     serviceService.update.mockResolvedValue(data);
 
-    await expect(controller.update('service-1', { name: 'Updated' } as any)).resolves.toEqual({
+    await expect(controller.update('service-1', buildUpdateServiceDto({ name: 'Updated' }))).resolves.toEqual({
       success: true,
       message: 'Service updated successfully',
       data,

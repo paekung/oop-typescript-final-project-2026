@@ -1,6 +1,9 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { DatabaseSchema } from '../database/database-schema.interface';
+import { JsonDatabaseService } from '../database/json-database.service';
+import { CreateAppointmentDto } from '../dto/appointment/create-appointment.dto';
+import { UpdateAppointmentDto } from '../dto/appointment/update-appointment.dto';
 import { AppointmentEntity } from '../entities/appointment.entity';
 import { ServiceEntity } from '../entities/service.entity';
 import { AppointmentStatus } from '../enums/appointment-status.enum';
@@ -8,12 +11,10 @@ import { DayOfWeek } from '../enums/day-of-week.enum';
 import { ServiceCategory } from '../enums/service-category.enum';
 import { AppointmentService } from './appointment.service';
 
-const createRepoMock = () => ({
-  find: jest.fn(),
-  findOneBy: jest.fn(),
-  create: jest.fn(),
-  save: jest.fn(),
-  remove: jest.fn(),
+const createDatabaseServiceMock = () => ({
+  read: jest.fn(),
+  write: jest.fn(),
+  reset: jest.fn(),
 });
 
 const buildService = (overrides: Partial<ServiceEntity> = {}): ServiceEntity => ({
@@ -55,6 +56,25 @@ const buildAppointment = (overrides: Partial<AppointmentEntity> = {}): Appointme
   ...overrides,
 });
 
+const buildCreateAppointmentDto = (
+  overrides: Partial<CreateAppointmentDto> = {},
+): CreateAppointmentDto => ({
+  serviceId: '123e4567-e89b-12d3-a456-426614174000',
+  customerName: 'Jane Doe',
+  customerEmail: 'jane@example.com',
+  customerPhone: '0812345678',
+  appointmentDate: '2099-03-10',
+  startTime: '09:00',
+  notes: '',
+  ...overrides,
+});
+
+const buildUpdateAppointmentDto = (
+  overrides: Partial<UpdateAppointmentDto> = {},
+): UpdateAppointmentDto => ({
+  ...overrides,
+});
+
 const formatLocalDate = (date: Date): string => {
   const yyyy = date.getFullYear();
   const mm = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -62,25 +82,25 @@ const formatLocalDate = (date: Date): string => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const buildDatabase = (overrides: Partial<DatabaseSchema> = {}): DatabaseSchema => ({
+  services: [],
+  appointments: [],
+  ...overrides,
+});
+
 describe('AppointmentService', () => {
   let service: AppointmentService;
-  let appointmentRepo: ReturnType<typeof createRepoMock>;
-  let serviceRepo: ReturnType<typeof createRepoMock>;
+  let databaseService: ReturnType<typeof createDatabaseServiceMock>;
 
   beforeEach(async () => {
-    appointmentRepo = createRepoMock();
-    serviceRepo = createRepoMock();
+    databaseService = createDatabaseServiceMock();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AppointmentService,
         {
-          provide: getRepositoryToken(AppointmentEntity),
-          useValue: appointmentRepo,
-        },
-        {
-          provide: getRepositoryToken(ServiceEntity),
-          useValue: serviceRepo,
+          provide: JsonDatabaseService,
+          useValue: databaseService,
         },
       ],
     }).compile();
@@ -93,7 +113,7 @@ describe('AppointmentService', () => {
   });
 
   it('createAppointment() should create a pending appointment with calculated end time', async () => {
-    const dto = {
+    const dto = buildCreateAppointmentDto({
       serviceId: 'service-1',
       customerName: 'Jane Doe',
       customerEmail: 'jane@example.com',
@@ -101,50 +121,49 @@ describe('AppointmentService', () => {
       appointmentDate: '2099-03-10',
       startTime: '09:30',
       notes: 'Window seat',
-    };
-    const entity = buildAppointment({
-      startTime: '09:30',
-      endTime: '10:30',
-      notes: 'Window seat',
     });
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        services: [buildService()],
+        appointments: [],
+      }),
+    );
 
-    serviceRepo.findOneBy.mockResolvedValue(buildService());
-    appointmentRepo.find.mockResolvedValue([]);
-    appointmentRepo.create.mockReturnValue(entity);
-    appointmentRepo.save.mockResolvedValue(entity);
+    const result = await service.createAppointment(dto);
 
-    const result = await service.createAppointment(dto as any);
-
-    expect(appointmentRepo.create).toHaveBeenCalledWith({
+    expect(result).toMatchObject({
       ...dto,
       serviceName: 'Consultation',
       endTime: '10:30',
       status: AppointmentStatus.PENDING,
+      notes: 'Window seat',
     });
-    expect(result).toEqual(entity);
+    expect(databaseService.write).toHaveBeenCalled();
   });
 
   it('createAppointment() should throw when service is missing', async () => {
-    serviceRepo.findOneBy.mockResolvedValue(null);
+    databaseService.read.mockResolvedValue(buildDatabase());
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'missing',
         appointmentDate: '2099-03-10',
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('createAppointment() should reject inactive services', async () => {
-    serviceRepo.findOneBy.mockResolvedValue(buildService({ isActive: false }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ services: [buildService({ isActive: false })] }),
+    );
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -152,14 +171,16 @@ describe('AppointmentService', () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
 
-    serviceRepo.findOneBy.mockResolvedValue(buildService());
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ services: [buildService()] }),
+    );
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: formatLocalDate(yesterday),
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -177,151 +198,154 @@ describe('AppointmentService', () => {
     ];
     const unavailableDays = Object.values(DayOfWeek).filter((day) => day !== dayNames[actualDayIndex]);
 
-    serviceRepo.findOneBy.mockResolvedValue(buildService({ availableDays: unavailableDays }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ services: [buildService({ availableDays: unavailableDays })] }),
+    );
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: serviceDate,
         startTime: '09:00',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('createAppointment() should reject times before service hours', async () => {
-    serviceRepo.findOneBy.mockResolvedValue(buildService({ startTime: '10:00' }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ services: [buildService({ startTime: '10:00' })] }),
+    );
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:30',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('createAppointment() should reject times after service end', async () => {
-    serviceRepo.findOneBy.mockResolvedValue(buildService({ endTime: '10:00' }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ services: [buildService({ endTime: '10:00' })] }),
+    );
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '09:30',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('createAppointment() should reject fully booked overlapping slots', async () => {
-    serviceRepo.findOneBy.mockResolvedValue(buildService({ bufferMinutes: 15, maxConcurrentBookings: 1 }));
-    appointmentRepo.find.mockResolvedValue([
-      buildAppointment({ startTime: '09:00', endTime: '10:00', status: AppointmentStatus.CONFIRMED }),
-    ]);
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        services: [buildService({ bufferMinutes: 15, maxConcurrentBookings: 1 })],
+        appointments: [
+          buildAppointment({ startTime: '09:00', endTime: '10:00', status: AppointmentStatus.CONFIRMED }),
+        ],
+      }),
+    );
 
     await expect(
-      service.createAppointment({
+      service.createAppointment(buildCreateAppointmentDto({
         serviceId: 'service-1',
         appointmentDate: '2099-03-10',
         startTime: '10:05',
-      } as any),
+      })),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('findAll() should forward filters to repository', async () => {
     const rows = [buildAppointment()];
-    appointmentRepo.find.mockResolvedValue(rows);
+    databaseService.read.mockResolvedValue(buildDatabase({ appointments: rows }));
 
     const result = await service.findAll(AppointmentStatus.PENDING, 'service-1', '2099-03-10');
 
     expect(result).toEqual(rows);
-    expect(appointmentRepo.find).toHaveBeenCalledWith({
-      where: {
-        status: AppointmentStatus.PENDING,
-        serviceId: 'service-1',
-        appointmentDate: '2099-03-10',
-      },
-    });
   });
 
   it('findById() should return the appointment when found', async () => {
     const entity = buildAppointment();
-    appointmentRepo.findOneBy.mockResolvedValue(entity);
+    databaseService.read.mockResolvedValue(buildDatabase({ appointments: [entity] }));
 
     await expect(service.findById('appointment-1')).resolves.toEqual(entity);
   });
 
   it('findById() should throw when appointment is missing', async () => {
-    appointmentRepo.findOneBy.mockResolvedValue(null);
+    databaseService.read.mockResolvedValue(buildDatabase());
 
     await expect(service.findById('missing')).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('update() should reject finalized appointments', async () => {
-    appointmentRepo.findOneBy.mockResolvedValue(buildAppointment({ status: AppointmentStatus.COMPLETED }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        appointments: [buildAppointment({ status: AppointmentStatus.COMPLETED })],
+      }),
+    );
 
-    await expect(service.update('appointment-1', { startTime: '11:00' } as any)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.update('appointment-1', buildUpdateAppointmentDto({ startTime: '11:00' })),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('update() should recalculate booking and preserve original status', async () => {
     const existing = buildAppointment({ status: AppointmentStatus.CONFIRMED });
-    const saved = buildAppointment({
-      status: AppointmentStatus.CONFIRMED,
-      startTime: '11:00',
-      endTime: '12:00',
-      notes: 'Updated note',
-    });
 
-    appointmentRepo.findOneBy.mockResolvedValue(existing);
-    serviceRepo.findOneBy.mockResolvedValue(buildService());
-    appointmentRepo.find.mockResolvedValue([]);
-    appointmentRepo.save.mockResolvedValue(saved);
-
-    const result = await service.update('appointment-1', {
-      startTime: '11:00',
-      notes: 'Updated note',
-    } as any);
-
-    expect(appointmentRepo.find).toHaveBeenCalledWith({
-      where: expect.objectContaining({
-        serviceId: 'service-1',
-        appointmentDate: '2099-03-10',
-        id: expect.anything(),
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        appointments: [existing],
+        services: [buildService()],
       }),
-    });
+    );
+
+    const result = await service.update('appointment-1', buildUpdateAppointmentDto({
+      startTime: '11:00',
+      notes: 'Updated note',
+    }));
+
     expect(result.status).toBe(AppointmentStatus.CONFIRMED);
     expect(result.endTime).toBe('12:00');
+    expect(databaseService.write).toHaveBeenCalled();
   });
 
   it('update() should reuse the existing schedule when only non-time fields change', async () => {
     const existing = buildAppointment({ status: AppointmentStatus.PENDING });
-    const saved = buildAppointment({
-      status: AppointmentStatus.PENDING,
-      startTime: '09:00',
-      endTime: '10:00',
-      notes: 'Only notes changed',
-    });
 
-    appointmentRepo.findOneBy.mockResolvedValue(existing);
-    serviceRepo.findOneBy.mockResolvedValue(buildService());
-    appointmentRepo.find.mockResolvedValue([]);
-    appointmentRepo.save.mockResolvedValue(saved);
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        appointments: [existing],
+        services: [buildService()],
+      }),
+    );
 
-    const result = await service.update('appointment-1', {
+    const result = await service.update('appointment-1', buildUpdateAppointmentDto({
       notes: 'Only notes changed',
-    } as any);
+    }));
 
     expect(result.startTime).toBe('09:00');
     expect(result.notes).toBe('Only notes changed');
   });
 
   it('patch() should reject finalized appointments', async () => {
-    appointmentRepo.findOneBy.mockResolvedValue(buildAppointment({ status: AppointmentStatus.CANCELLED }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        appointments: [buildAppointment({ status: AppointmentStatus.CANCELLED })],
+      }),
+    );
 
     await expect(service.patch('appointment-1', { cancellationReason: 'Later' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('patch() should reject invalid status transitions', async () => {
-    appointmentRepo.findOneBy.mockResolvedValue(buildAppointment({ status: AppointmentStatus.PENDING }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        appointments: [buildAppointment({ status: AppointmentStatus.PENDING })],
+      }),
+    );
 
     await expect(
       service.patch('appointment-1', { status: AppointmentStatus.COMPLETED }),
@@ -334,16 +358,17 @@ describe('AppointmentService', () => {
       status: AppointmentStatus.CONFIRMED,
       cancellationReason: 'Moved schedule',
     });
-    appointmentRepo.findOneBy.mockResolvedValue(existing);
-    appointmentRepo.save.mockResolvedValue(saved);
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ appointments: [existing] }),
+    );
 
     const result = await service.patch('appointment-1', {
       status: AppointmentStatus.CONFIRMED,
       cancellationReason: 'Moved schedule',
     });
 
-    expect(appointmentRepo.save).toHaveBeenCalled();
-    expect(result).toEqual(saved);
+    expect(result).toMatchObject(saved);
+    expect(databaseService.write).toHaveBeenCalled();
   });
 
   it('patch() should allow valid status transitions without changing cancellation reason', async () => {
@@ -352,34 +377,44 @@ describe('AppointmentService', () => {
       status: AppointmentStatus.NO_SHOW,
       cancellationReason: null,
     });
-    appointmentRepo.findOneBy.mockResolvedValue(existing);
-    appointmentRepo.save.mockResolvedValue(saved);
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ appointments: [existing] }),
+    );
 
     const result = await service.patch('appointment-1', {
       status: AppointmentStatus.NO_SHOW,
     });
 
-    expect(result.status).toBe(AppointmentStatus.NO_SHOW);
-    expect(result.cancellationReason).toBeNull();
+    expect(result).toMatchObject(saved);
   });
 
   it('should evaluate status transition helper results', () => {
+    const transitionChecker = service as unknown as {
+      isValidTransition: (
+        currentStatus: AppointmentStatus,
+        newStatus: AppointmentStatus,
+      ) => boolean;
+    };
+
     expect(
-      (service as any).isValidTransition(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
+      transitionChecker.isValidTransition(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED),
     ).toBe(true);
     expect(
-      (service as any).isValidTransition(AppointmentStatus.COMPLETED, AppointmentStatus.PENDING),
+      transitionChecker.isValidTransition(AppointmentStatus.COMPLETED, AppointmentStatus.PENDING),
     ).toBe(false);
   });
 
   it('remove() should delete the existing appointment', async () => {
     const existing = buildAppointment();
-    appointmentRepo.findOneBy.mockResolvedValue(existing);
-    appointmentRepo.remove.mockResolvedValue(existing);
+    databaseService.read.mockResolvedValue(
+      buildDatabase({ appointments: [existing] }),
+    );
 
     await service.remove('appointment-1');
 
-    expect(appointmentRepo.remove).toHaveBeenCalledWith(existing);
+    expect(databaseService.write).toHaveBeenCalledWith(
+      expect.objectContaining({ appointments: [] }),
+    );
   });
 
   it('cancel() should require a cancellation reason', async () => {
@@ -403,13 +438,21 @@ describe('AppointmentService', () => {
   });
 
   it('confirm() should reject non-pending appointments', async () => {
-    appointmentRepo.findOneBy.mockResolvedValue(buildAppointment({ status: AppointmentStatus.CONFIRMED }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        appointments: [buildAppointment({ status: AppointmentStatus.CONFIRMED })],
+      }),
+    );
 
     await expect(service.confirm('appointment-1')).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('confirm() should delegate to patch for pending appointments', async () => {
-    appointmentRepo.findOneBy.mockResolvedValue(buildAppointment({ status: AppointmentStatus.PENDING }));
+    databaseService.read.mockResolvedValue(
+      buildDatabase({
+        appointments: [buildAppointment({ status: AppointmentStatus.PENDING })],
+      }),
+    );
     const confirmed = buildAppointment({ status: AppointmentStatus.CONFIRMED });
     const patchSpy = jest.spyOn(service, 'patch').mockResolvedValue(confirmed);
 
